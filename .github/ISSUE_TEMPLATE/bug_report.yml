@@ -1,0 +1,81 @@
+name: Bug report
+description: Something behaves incorrectly or crashes
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The single most useful thing you can give us is the **exact input**
+        that triggered the problem — a reproducible payload beats any amount of description.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Input
+      description: >
+        The exact input that triggers this. Defang it if it is genuinely malicious. If it is large,
+        trim it to the smallest version that still reproduces the problem.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: recipe
+    attributes:
+      label: Recipe
+      description: >
+        The recipe in use, or a share link. Copy it from the Text view of the recipe pane.
+      render: json
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 141 / Chrome 139 / Safari 18.5
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: DecodeBox version
+      description: From the About dialog, or the commit hash if you built it yourself.
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Any errors in the browser developer console.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through private reporting).
+          required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this issue. Please assign it to me.
+          required: false

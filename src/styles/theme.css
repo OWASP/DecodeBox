@@ -1,0 +1,479 @@
+/*
+ * OWASP's brand typefaces: Poppins for headings, Barlow for body text, per the
+ * Foundation's branding guidelines. JetBrains Mono carries every byte of user
+ * data, where a distinguishable 0/O and 1/l is not a preference.
+ *
+ * All self-hosted. A font CDN would tell a third party the IP address of every
+ * person who opens the tool, which is exactly what this project promises not to
+ * do.
+ */
+@import 'tailwindcss';
+
+/*
+ * Colors resolve to the custom properties defined further down, so a single
+ * token drives both themes and Tailwind never needs a `dark:` variant.
+ */
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-ok: var(--green);
+  --color-warn: var(--amber);
+  --color-link: var(--blue);
+  --color-danger: var(--red);
+
+  /* The accent, by name. Every selected, focused or primary thing points
+     here, so the identity is one token rather than a colour repeated. */
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-wash: var(--accent-wash);
+
+  --font-sans: Barlow, system-ui, -apple-system, Segoe UI, sans-serif;
+  --font-brand: Poppins, Barlow, system-ui, sans-serif;
+  --font-mono:
+    JetBrains Mono, Cascadia Code, Cascadia Mono, Fira Code, SF Mono,
+    ui-monospace, SFMono-Regular, Consolas, Liberation Mono, monospace;
+
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1rem;
+  --text-xs2: 0.8125rem;
+  --text-xs2--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.6;
+  --text-card: 1.125rem;
+  --text-card--line-height: 1.4;
+  --text-card--letter-spacing: -0.01em;
+  --text-section: 1.375rem;
+  --text-section--line-height: 1.3;
+  --text-section--letter-spacing: -0.02em;
+  --text-verdict: 2.125rem;
+  --text-verdict--line-height: 1.15;
+  --text-verdict--letter-spacing: -0.03em;
+
+  /* Flattened for the editor shell. VS Code's chrome has square corners
+     almost everywhere, and 8px radii on every control was the single
+     strongest tell that this was a web page wearing an IDE costume. */
+  --radius-card: 3px;
+  --radius-control: 3px;
+  --radius-chip: 2px;
+
+  /* The only two shadows in the system. Depth otherwise comes from borders. */
+  --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-focus: 0 0 0 1px var(--accent-line), 0 0 32px var(--accent-wash);
+
+  --ease-smooth: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --container-page: 1080px;
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  /* Tailwind v4 dropped the pointer cursor from buttons. Every clickable
+     control here was designed with it, so it comes back. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility glow {
+  /* The one glowing element on screen at any moment. */
+  box-shadow: var(--glow);
+}
+
+@utility rise {
+  animation: rise 260ms cubic-bezier(0.2, 0, 0.2, 1) both;
+}
+
+@utility db-rail {
+  background-color: var(--activity-bg);
+}
+
+@utility db-rail-item {
+  color: var(--activity-fg-dim);
+  &:hover {
+    color: var(--activity-fg);
+  }
+  /* The selected item is the accent, not just brighter — colour alone is not
+     the signal, the indicator bar beside it is, but the two together are what
+     make the choice readable at a glance. */
+  &[data-active='true'] {
+    color: var(--accent-text);
+    background-color: var(--accent-soft);
+  }
+  &:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+@utility db-tabstrip {
+  background-color: var(--surface);
+}
+
+@utility db-tab {
+  background-color: var(--tab-inactive-bg);
+  color: var(--tab-inactive-fg);
+  &:hover {
+    color: var(--tab-active-fg);
+  }
+  &[data-active='true'] {
+    background-color: var(--tab-active-bg);
+    color: var(--tab-active-fg);
+  }
+  &:focus-within {
+    outline: 1px solid var(--accent-line);
+    outline-offset: -1px;
+  }
+}
+
+@utility db-status {
+  background-color: var(--status-bg);
+  color: var(--status-fg);
+}
+
+@utility db-status-item {
+  &:hover {
+    background-color: var(--status-hover);
+  }
+}
+
+@utility db-row {
+  /* The row hover and selection an Explorer list lives on. */
+  &:hover {
+    background-color: var(--list-hover);
+  }
+  &[data-active='true'] {
+    background-color: var(--list-active);
+  }
+}
+
+@layer base {
+  @font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/fonts/poppins-600.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/barlow-400.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/barlow-500.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/fonts/barlow-600.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+      U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+      U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/fonts/jetbrains-mono-latin-ext.woff2') format('woff2');
+    unicode-range:
+      U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+      U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+      U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+}
+
+@layer utilities {
+  /*
+  Light is the base definition so no color exists only inside a media query.
+  Dark is applied by preference, then by explicit choice, so the toggle wins in
+  both directions.
+*/
+  :root {
+    color-scheme: light;
+
+    --bg: #ffffff;
+    --surface: #f3f3f3;
+    --surface-2: #ececec;
+    --surface-3: #e4e6f1;
+
+    --border: #e0e0e0;
+    --border-strong: #c8c8c8;
+
+    --text: #1f1f1f;
+    --text-muted: #3b3b3b;
+    --text-faint: #5c5c5c;
+
+    --accent: #5a189a;
+    --accent-text: #521485;
+    --accent-soft: rgba(90, 24, 154, 0.12);
+    --accent-line: rgba(90, 24, 154, 0.42);
+    --accent-wash: rgba(90, 24, 154, 0.06);
+
+    --green: #1a7f37;
+    --amber: #854d0e;
+    --blue: #521485;
+    --red: #c81e1e;
+
+    --amber-wash: rgba(133, 77, 14, 0.07);
+
+    --activity-bg: #e8e8e8;
+    --activity-fg: #1f1f1f;
+    --activity-fg-dim: #616161;
+    --activity-active-line: #5a189a;
+
+    --tab-active-bg: #ffffff;
+    --tab-inactive-bg: #ececec;
+    --tab-active-fg: #1f1f1f;
+    --tab-inactive-fg: #6b6b6b;
+    --tab-active-line: #5a189a;
+
+    --status-bg: #5a189a;
+    --status-fg: #ffffff;
+    --status-fg-dim: rgba(255, 255, 255, 0.86);
+    --status-hover: rgba(255, 255, 255, 0.18);
+
+    --list-hover: #e8e8e8;
+    --list-active: rgba(90, 24, 154, 0.14);
+    --indent-guide: #d3d3d3;
+
+    --glow: none;
+    --overlay-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+
+      --bg: #121314;
+      --surface: #191a1b;
+      --surface-2: #191a1b;
+      --surface-3: #232527;
+
+      --border: #26282a;
+      --border-strong: #34373a;
+
+      --text: #cccccc;
+      --text-muted: #c5c5c5;
+      --text-faint: #a6a6a6;
+
+      --accent: #9d4edd;
+      --accent-text: #c77dff;
+      --accent-soft: rgba(157, 78, 221, 0.22);
+      --accent-line: rgba(199, 125, 255, 0.45);
+      --accent-wash: rgba(157, 78, 221, 0.12);
+
+      --green: #4ec9b0;
+      --amber: #eab308;
+      --blue: #c77dff;
+      --red: #f14c4c;
+
+      --amber-wash: rgba(234, 179, 8, 0.08);
+
+      --activity-bg: #191a1b;
+      --activity-fg: #ffffff;
+      --activity-fg-dim: #8c8c8c;
+      --activity-active-line: #c77dff;
+
+      --tab-active-bg: #121314;
+      --tab-inactive-bg: #191a1b;
+      --tab-active-fg: #ffffff;
+      --tab-inactive-fg: #969696;
+      --tab-active-line: #c77dff;
+
+      --status-bg: #9d4edd;
+      --status-fg: #ffffff;
+      --status-fg-dim: #ffffff;
+      --status-hover: rgba(0, 0, 0, 0.22);
+
+      --list-hover: #202224;
+      --list-active: rgba(157, 78, 221, 0.28);
+      --indent-guide: #34373a;
+
+      --glow: 0 0 0 1px var(--accent-line);
+      --overlay-shadow: 0 10px 36px rgba(0, 0, 0, 0.65);
+    }
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --bg: #121314;
+    --surface: #191a1b;
+    --surface-2: #191a1b;
+    --surface-3: #232527;
+
+    --border: #26282a;
+    --border-strong: #34373a;
+
+    --text: #cccccc;
+    --text-muted: #c5c5c5;
+    --text-faint: #a6a6a6;
+
+    --accent: #9d4edd;
+    --accent-text: #c77dff;
+    --accent-soft: rgba(157, 78, 221, 0.22);
+    --accent-line: rgba(199, 125, 255, 0.45);
+    --accent-wash: rgba(157, 78, 221, 0.12);
+
+    --green: #4ec9b0;
+    --amber: #eab308;
+    --blue: #c77dff;
+    --red: #f14c4c;
+
+    --amber-wash: rgba(234, 179, 8, 0.08);
+
+    --activity-bg: #191a1b;
+    --activity-fg: #ffffff;
+    --activity-fg-dim: #8c8c8c;
+    --activity-active-line: #c77dff;
+
+    --tab-active-bg: #121314;
+    --tab-inactive-bg: #191a1b;
+    --tab-active-fg: #ffffff;
+    --tab-inactive-fg: #969696;
+    --tab-active-line: #c77dff;
+
+    --status-bg: #9d4edd;
+    --status-fg: #ffffff;
+    --status-fg-dim: #ffffff;
+    --status-hover: rgba(0, 0, 0, 0.22);
+
+    --list-hover: #202224;
+    --list-active: rgba(157, 78, 221, 0.28);
+    --indent-guide: #34373a;
+
+    --glow: 0 0 0 1px var(--accent-line);
+    --overlay-shadow: 0 10px 36px rgba(0, 0, 0, 0.65);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+    background-clip: content-box;
+  }
+}
+
+@layer utilities {
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /*
+  The chrome, as real classes rather than Tailwind colour keys.
+
+  These four surfaces do not follow the light/dark split the content tokens do
+  — VS Code keeps a dark activity bar and a solid accent status bar in every
+  theme — so they were added to the Tailwind palette at first. That turned out
+  to depend on the config being recompiled, and a `bg-status` that silently
+  resolves to nothing gives you white text on a white page. Written here they
+  are just CSS, they carry their own hover states, and there is nothing to
+  regenerate.
+*/
+}

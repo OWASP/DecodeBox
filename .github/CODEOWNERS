@@ -1,0 +1,25 @@
+# Code owners are requested for review automatically on any pull request
+# touching the paths below. Add co-leaders and maintainers here as the project
+# grows — a single owner is a bus factor, not a governance model.
+
+# Default owner for everything not matched below.
+*                       @m4sh-wacker
+
+# The engine contract is shared by both halves of the project. Changing it is a
+# coordinated change, never a local refactor.
+/src/engine/types.ts    @m4sh-wacker
+/src/engine/index.ts    @m4sh-wacker
+
+# Detection heuristics decide whether users trust this tool. Every change here
+# gets read carefully.
+/src/engine/detection/  @m4sh-wacker
+
+# Supply chain and release surface.
+/.github/               @m4sh-wacker
+/package.json           @m4sh-wacker
+/package-lock.json      @m4sh-wacker
+
+# Project governance and security policy.
+/SECURITY.md            @m4sh-wacker
+/LICENSE                @m4sh-wacker
+/NOTICE                 @m4sh-wacker

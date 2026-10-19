@@ -1,0 +1,58 @@
+name: SBOM
+
+# Generates a CycloneDX software bill of materials. CycloneDX is itself an OWASP
+# standard, and a security tool that cannot tell you what is inside it is asking
+# for trust it has not earned.
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Use Node LTS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install clean packages
+        run: npm clean-install
+
+      - name: Generate SBOM
+        uses: CycloneDX/gh-node-module-generatebom@27e13c2bf0fae78d66387b35ca9749d8cc853060 # v1.0.3
+        with:
+          path: ./
+          output: ./sbom.json
+
+      - name: Summarise
+        run: |
+          {
+            echo "### SBOM"
+            echo ""
+            echo "Components: $(grep -c '"bom-ref"' sbom.json || echo unknown)"
+            echo "Format: CycloneDX"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
+          retention-days: 90

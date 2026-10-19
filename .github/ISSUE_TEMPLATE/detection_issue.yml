@@ -1,0 +1,59 @@
+name: Detection problem
+description: DecodeBox identified data incorrectly, missed a format, or gave misleading confidence
+labels: [detection, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Detection quality is the core of this project, so these reports are especially valuable.
+        False positives matter more than misses — confidently wrong is worse than silent.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem
+      options:
+        - False positive — detected something that is not there
+        - Missed detection — did not detect a format it should have
+        - Wrong confidence — detected correctly but the score is misleading
+        - Wrong evidence — the stated reasoning does not match the data
+        - Layer tree wrong — nesting is incorrect or incomplete
+    validations:
+      required: true
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Input
+      description: The exact data. Defang if malicious. Trim to the smallest reproducing case.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What it actually is
+      description: >
+        What is this data really? If you know how it was produced (encoded with X, then compressed
+        with Y), say so — that tells us what the engine should have concluded.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reported
+    attributes:
+      label: What DecodeBox reported
+      description: >
+        The candidates it listed, with their confidence scores and evidence chips. A screenshot of
+        the detection pane works too.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true

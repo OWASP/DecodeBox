@@ -1,0 +1,32 @@
+# Normalise line endings. Contributors on Windows should not produce diffs that
+# consist entirely of invisible whitespace changes.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Binary assets — never diff or normalise these.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.br        binary
+*.wasm      binary
+
+# Generated files: keep them out of diffs and out of language statistics.
+package-lock.json   -diff linguist-generated=true
+sbom.json           -diff linguist-generated=true
+
+# Test fixtures are deliberately malformed data. Excluding them from language
+# detection keeps the repository's language breakdown honest.
+tests/fixtures/**   linguist-vendored=true

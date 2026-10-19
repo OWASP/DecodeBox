@@ -1,0 +1,52 @@
+name: Housekeeping
+
+on:
+  schedule:
+    - cron: '31 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    name: Mark stale issues and pull requests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Flag inactivity
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-issue-stale: 90
+          days-before-issue-close: 21
+          days-before-pr-stale: 45
+          days-before-pr-close: 21
+
+          stale-issue-message: >
+            This issue has had no activity for 90 days. If it is still relevant, a comment
+            saying so will keep it open. Otherwise it will close in three weeks — closing is
+            not a judgement on the idea, just housekeeping, and reopening is always fine.
+          stale-pr-message: >
+            This pull request has had no activity for 45 days. Let us know if you are still
+            working on it, or if it needs a review it has not had. It will close in three
+            weeks otherwise.
+          close-issue-message: >
+            Closing for inactivity. Comment here if you would like it reopened.
+          close-pr-message: >
+            Closing for inactivity. Reopen it whenever you want to pick it back up.
+
+          stale-issue-label: stale
+          stale-pr-label: stale
+
+          # Never let the bot close work that is real, planned, or a security matter.
+          exempt-issue-labels: 'pinned,security,roadmap,good first issue,help wanted'
+          exempt-pr-labels: 'pinned,security,dependencies'
+          exempt-all-milestones: true
+
+          operations-per-run: 60
+          ascending: true

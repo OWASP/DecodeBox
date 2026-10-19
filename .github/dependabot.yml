@@ -1,0 +1,46 @@
+version: 2
+
+# One pull request a month, for everything, and only for updates that can pass.
+#
+# Weekly, and even grouped monthly per ecosystem, Dependabot still produced a
+# handful of pull requests at a time, and the major versions among them were
+# red almost every time: a major usually needs a code change, or waits on a
+# peer package that has not caught up yet (TypeScript 7 before typescript-eslint
+# supported it, Vite 8 before @vitejs/plugin-react 6 was paired with it).
+#
+# So routine minor and patch updates for npm and GitHub Actions arrive together
+# in a single pull request each month, and majors are left out entirely. A major
+# is planned as its own change, by a person, when the ecosystem is ready for it.
+#
+# Security updates are not affected by any of this: ignoring an update type
+# only applies to version updates, and a security fix opens its own pull
+# request straight away. That needs "Dependabot security updates" turned on in
+# the repository settings; this file does not control it.
+
+multi-ecosystem-groups:
+  monthly-maintenance:
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    patterns:
+      - '*'
+    multi-ecosystem-group: monthly-maintenance
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    patterns:
+      - '*'
+    multi-ecosystem-group: monthly-maintenance
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major

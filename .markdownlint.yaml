@@ -1,0 +1,39 @@
+---
+# Relaxed where the default rule fights normal technical writing, strict
+# everywhere else. Mirrors the configuration used across OWASP project repos.
+
+no-trailing-punctuation: false
+no-inline-html: false
+first-line-heading: false
+link-fragments: false
+table-column-style: false
+
+# MD001 - headings do not have to increment strictly by one level
+heading-increment: false
+
+# MD013 - line length
+MD013:
+  line_length: 100
+  heading_line_length: 100
+  code_block_line_length: 100
+  code_blocks: false
+  headings: true
+  tables: false
+  strict: false
+  stern: true
+
+# MD024 - repeated headings are fine when they sit under different parents
+MD024:
+  siblings_only: true
+
+# MD033 - inline HTML is allowed, but keep it to presentation elements
+MD033:
+  allowed_elements:
+    - h1
+    - strong
+    - p
+    - img
+    - a
+    - br
+    - details
+    - summary

@@ -1,0 +1,192 @@
+name: Deploy to GitHub Pages
+
+# The build is published to the gh-pages branch and GitHub Pages serves that
+# branch. The repository setting this needs is:
+#
+#   Settings -> Pages -> Build and deployment
+#     Source: Deploy from a branch
+#     Branch: gh-pages / (root)
+#
+# That setting cannot be changed from here. It needs repository administration
+# rights, and `administration` is not among the permissions a workflow is able
+# to request, so no token this workflow can hold will ever be allowed to. The
+# last step therefore asks the live site what it is serving and fails if the
+# answer is wrong, naming the setting. Failing is the point: an earlier version
+# only warned, and a warning inside a green run is indistinguishable from
+# nothing at all — the site was blank for an afternoon while every check passed.
+#
+# The branch is force-pushed as a single orphan commit each time. The output is
+# 2.7 MB and every file in it is content-hashed, so keeping its history would
+# add that much to the repository on every deploy, and not one byte of it would
+# ever be read again.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read-only by default. The one job that needs to write asks for it itself.
+permissions:
+  contents: read
+
+# One publish at a time, and never cancel one part-way through a force-push.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    permissions:
+      # The only privilege in this workflow, and it exists for one command: the
+      # push to gh-pages at the end.
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The publish step pushes with an explicit token instead, so the
+          # checkout never leaves credentials behind in the working tree.
+          persist-credentials: false
+
+      - name: Use Node LTS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install clean packages
+        run: npm clean-install
+
+      - name: Build
+        run: npm run build
+
+      # The build ships no CNAME, so no repository claims a domain it does not
+      # control. The site serves from its github.io URL, which works because
+      # the build uses relative asset paths.
+      #
+      # On a branch-served site the CNAME file *is* the custom domain setting,
+      # and this branch is force-pushed. A repository that has a domain
+      # configured would lose it the moment it deploys: Pages reads the setting
+      # back from a file that is no longer there and quietly unsets it. That is
+      # how a staging site once turned into a 404 in the middle of a release,
+      # with every check in this workflow green.
+      #
+      # So whatever domain the repository has configured is carried forward.
+      # Pages is asked what it currently is, with the branch's own file as a
+      # second opinion in case that read is not permitted.
+      - name: Keep this repository's own custom domain
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -f dist/CNAME
+
+          raw="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/gh-pages/CNAME"
+
+          domain=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.cname // empty' 2>/dev/null || true)
+          if [ -z "$domain" ]; then
+            domain=$(curl -fsSL --max-time 30 "$raw" 2>/dev/null | tr -d '[:space:]' || true)
+          fi
+
+          if [ -n "$domain" ]; then
+            echo "$domain" > dist/CNAME
+            echo "Keeping the custom domain $domain."
+          else
+            echo "No custom domain is configured, so the site stays on github.io."
+          fi
+
+      - name: Verify the build is static and complete
+        run: |
+          test -f dist/index.html || { echo "::error::dist/index.html is missing"; exit 1; }
+          test -f dist/decodebox.html || { echo "::error::dist/decodebox.html is missing - the download button would 404"; exit 1; }
+          # The application must never call out to a third party at runtime. This is a
+          # coarse check, but it catches an accidental CDN reference before it ships.
+          if grep -rIloE 'https?://(cdn|unpkg|jsdelivr)' dist --include='*.js' --include='*.html' | head -1 | grep -q .; then
+            echo "::error::Found a CDN reference in the build output. DecodeBox must make no runtime network requests."
+            exit 1
+          fi
+
+      - name: Publish to the gh-pages branch
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          # A branch-served site runs Jekyll over the branch by default. Nothing
+          # here wants it, and it silently drops anything whose name begins with
+          # an underscore, which is a poor way to lose part of a build.
+          touch dist/.nojekyll
+
+          # A throwaway repository holding only the output, pushed over whatever
+          # was there before. gh-pages is therefore always exactly one commit
+          # deep, and this repository never grows by deploying.
+          cd dist
+          git init --quiet --initial-branch=gh-pages
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git commit --quiet --message "Deploy $GITHUB_SHA"
+          git push --quiet --force \
+            "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+          echo "Published $(git rev-parse --short HEAD) to gh-pages."
+
+      # A push to gh-pages is not a deployment. Pages still has to notice the
+      # branch moved, rebuild and serve it, and it will do none of that if it is
+      # pointed somewhere else. So ask the site, which is the only thing that
+      # actually knows.
+      #
+      # It is asked for *this* build, by the content hash in the entry script's
+      # filename, not merely for a build. Matching any hash would pass happily
+      # while the site served last week's copy, which is the same class of
+      # not-quite-a-check that let it serve no copy at all.
+      - name: Check the site serves this build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          entry=$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' dist/index.html | head -1)
+          if [ -z "$entry" ]; then
+            echo "::error::Could not find the entry script in dist/index.html, so there is nothing to check the site against."
+            exit 1
+          fi
+          echo "Looking for $entry."
+
+          config=$(gh api "repos/$GITHUB_REPOSITORY/pages" 2>/dev/null || true)
+          if [ -z "$config" ]; then
+            echo "::warning::Could not read the Pages configuration, so this deploy went unchecked. If the site is blank, set Settings -> Pages -> Build and deployment -> Source to 'Deploy from a branch', branch 'gh-pages' / (root)."
+            exit 0
+          fi
+
+          branch=$(printf '%s' "$config" | jq -r '.source.branch // "none"')
+          url=$(printf '%s' "$config" | jq -r '.html_url')
+
+          if [ "$branch" != "gh-pages" ]; then
+            echo "::error::The build is on gh-pages, but Pages is serving the '$branch' branch, so the site does not show it. Open Settings -> Pages -> Build and deployment and set Source to 'Deploy from a branch', Branch 'gh-pages' / (root). No workflow token is permitted to change that setting."
+            exit 1
+          fi
+
+          # Publishing to a branch is not the end of the pipeline. GitHub queues
+          # its own "pages build and deployment" run afterwards, and only when
+          # that finishes does the CDN start serving the new files. It usually
+          # takes a minute; it has taken twenty. Eight attempts over 160 seconds
+          # was calling that a failure, which is a check that cries wolf.
+          for attempt in $(seq 1 24); do
+            body=$(curl -fsSL --max-time 30 "$url" || true)
+            case "$body" in
+              *"$entry"*)
+                echo "$url is serving this build."
+                exit 0
+                ;;
+              *src/main.tsx*)
+                # This one never resolves itself: it means Pages is pointed at
+                # the source branch, so there is no reason to keep waiting.
+                echo "::error::$url is serving this repository's source index.html instead of the build, so the page is blank. Set Settings -> Pages -> Build and deployment -> Source to 'Deploy from a branch', branch 'gh-pages' / (root)."
+                exit 1
+                ;;
+            esac
+            echo "Attempt $attempt/24: $url is not serving $entry yet."
+            sleep 20
+          done
+          echo "::error::$url did not serve $entry within eight minutes. gh-pages has the build - check whether GitHub's own 'pages build and deployment' run is still queued, and re-run this job once it has finished."
+          exit 1

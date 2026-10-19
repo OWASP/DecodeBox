@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      The Content Security Policy is injected at build time by vite.config.ts,
+      not written here. It has to be: the policy hashes the inline script below,
+      and connect-src 'none' would otherwise block the dev server's hot-reload
+      socket. See the cspPlugin comment for the policy itself.
+    -->
+
+    <title>OWASP DecodeBox</title>
+    <meta
+      name="description"
+      content="An encoding and decoding workbench that identifies unknown data, explains the evidence behind every guess, and unwraps nested encodings. Everything runs in your browser."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#121314" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+    <script>
+      // Applied before first paint so the page never flashes the wrong theme.
+      // Wrapped because storage access throws outright in some privacy modes.
+      try {
+        var t = localStorage.getItem('decodebox-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {
+        /* no stored preference; the media query decides */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      DecodeBox runs entirely in your browser and needs JavaScript enabled. Nothing you paste is
+      ever uploaded — the processing has to happen locally, which is the point.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

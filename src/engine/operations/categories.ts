@@ -1,0 +1,18 @@
+export const CATEGORY_ORDER = [
+  'Data format',
+  'Encryption / Encoding',
+  'Public Key',
+  'Arithmetic / Logic',
+  'Compression',
+  'Hashing',
+  'Networking',
+  'Extractors',
+  'Language',
+  'Utils',
+  'Code tidy',
+  'Date / Time',
+  'Multimedia',
+  'Forensics',
+  'Other',
+  'Flow control',
+];

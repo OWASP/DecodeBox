@@ -1,0 +1,92 @@
+name: Documentation quality
+
+# Documentation is part of the deliverable, so it gets the same gates the code does.
+# This mirrors the housekeeping other OWASP projects run on their docs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - '.markdownlint.yaml'
+      - '.spellcheck.yaml'
+      - '.wordlist.txt'
+      - '.lycheeignore'
+  pull_request:
+    paths:
+      - '**.md'
+      - '.markdownlint.yaml'
+      - '.spellcheck.yaml'
+      - '.wordlist.txt'
+      - '.lycheeignore'
+  schedule:
+    # Weekly link check. External links rot without anyone touching the repo.
+    - cron: '43 5 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdown-lint:
+    name: Markdown lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Lint markdown
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: |
+            **/*.md
+            #node_modules
+            #dist
+
+  # Spelling and link rot are advisory rather than blocking. Both depend on
+  # state outside the repository — a wordlist that has not settled yet, and
+  # remote hosts that rate-limit CI runners — so a red mark from either is not
+  # a reason to stop a contributor's pull request. Flip continue-on-error off
+  # once the wordlist has stopped growing on every push.
+  spelling:
+    name: Spell check (advisory)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Unknown words are added to .wordlist.txt, which doubles as the project's
+      # glossary of accepted technical terms.
+      - name: Check spelling
+        uses: rojopolis/spellcheck-github-actions@c1934c57e61c734261d7905b525486b12f8eb670 # 0.66.0
+        with:
+          config_path: .spellcheck.yaml
+
+  links:
+    name: Link check (advisory)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          # Mail links are skipped by default; the old --exclude-mail spelling
+          # was removed upstream and passing it aborts the run before it starts.
+          args: --no-progress --max-retries 3 './**/*.md'
+          fail: true

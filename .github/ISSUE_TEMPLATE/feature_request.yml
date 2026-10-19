@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose an improvement to the interface, workflow, or engine
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a new transformation operation, use the **New operation** template instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What are you trying to do that is currently awkward or impossible? Describe the situation,
+        not the solution — the problem is what we need to understand first.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: How would you like it to work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today
+      description: >
+        How do you work around this now — another tool, a manual step, a script? Knowing the
+        current workaround tells us how much pain this actually causes.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      description: DecodeBox is a client-side tool with no backend. Please confirm this fits.
+      options:
+        - label: This does not require a server, an account, or sending data anywhere.
+          required: true
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this issue. Please assign it to me.
+          required: false

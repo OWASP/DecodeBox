@@ -1,0 +1,107 @@
+name: New operation
+description: Propose a transformation, encoding, hash, or parser that DecodeBox should support
+labels: [operation, enhancement]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Operation name
+      description: >
+        Use the established name for this transformation, the one the field already uses —
+        shared vocabulary lowers the cost of moving between tools.
+      placeholder: From Base58
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Data format
+        - Encryption / Encoding
+        - Public Key
+        - Arithmetic / Logic
+        - Networking
+        - Language
+        - Utils
+        - Date / Time
+        - Extractors
+        - Compression
+        - Hashing
+        - Code tidy
+        - Forensics
+        - Multimedia
+        - Flow control
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does
+      description: One or two sentences. Link a specification or RFC if one exists.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: When would you use it
+      description: >
+        A concrete situation where you needed this. Real use cases decide priority here — an
+        operation someone hit last week beats one that is theoretically complete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: arguments
+    attributes:
+      label: Arguments
+      description: >
+        What options does it need, and what are their types and defaults? For example:
+        Alphabet (string, default "123...z"), Strict mode (boolean, default false).
+    validations:
+      required: false
+
+  - type: textarea
+    id: vectors
+    attributes:
+      label: Test vectors
+      description: >
+        Input/output pairs we can turn into tests. Include an edge case and a malformed input if
+        you have them — this is the most useful part of the issue.
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: detection
+    attributes:
+      label: Can this format be detected automatically?
+      description: >
+        If yes, describe the signal in the next field — character set, entropy range, magic bytes,
+        length rule, or a regex.
+      options:
+        - 'Yes — it has a recognisable signature'
+        - 'Maybe — it can be guessed but not reliably'
+        - 'No — it is indistinguishable from arbitrary bytes'
+    validations:
+      required: true
+
+  - type: textarea
+    id: detection-signal
+    attributes:
+      label: Detection signal
+      description: What distinguishes this format from arbitrary data?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this myself.
+          required: false

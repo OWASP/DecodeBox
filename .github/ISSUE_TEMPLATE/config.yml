@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/OWASP/DecodeBox/security/advisories/new
+    about: Report privately. Please do not open a public issue for security problems.
+
+  - name: Question or general discussion
+    url: https://owasp.org/slack/invite
+    about: Ask how something works, or propose an idea before writing code, on the OWASP Slack.
+
+  - name: OWASP Code of Conduct
+    url: https://policy.owasp.org/operational/code-of-conduct
+    about: How we expect everyone to behave in this project.

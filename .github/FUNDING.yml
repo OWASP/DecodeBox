@@ -1,0 +1,5 @@
+# Follows the convention used across OWASP project repositories: donations are
+# routed to the OWASP Foundation and tagged with this project's web repository
+# so the funds are attributed correctly.
+custom: https://owasp.org/donate/?reponame=www-project-decodebox&title=OWASP+DecodeBox
+github: OWASP
