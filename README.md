@@ -7,6 +7,8 @@
 
 A browser-based workbench that unwraps unknown data, names what it finds, and explains how it knew.
 
+[![DecodeBox auto-decoding a layered payload](docs/screenshot.png)](https://owasp.github.io/DecodeBox/)
+
 ---
 
 ### Project Status
