@@ -5,7 +5,7 @@
 [![Live Site](https://img.shields.io/badge/demo-owasp.github.io%2FDecodeBox-orange.svg)](https://owasp.github.io/DecodeBox/)
 [![Client-side](https://img.shields.io/badge/processing-100%25_local-green.svg)](#security--privacy)
 
-A browser-based workbench that unwraps unknown data, names what it finds, and explains how it knew.
+**Encode. Decode. Identify.** Smart decoding for any data.
 
 [![DecodeBox auto-decoding a layered payload](docs/screenshot.png)](https://owasp.github.io/DecodeBox/)
 
