@@ -11,9 +11,9 @@ async function runOp(id: string, input: string, overrides: Record<string, unknow
 
 describe('removing markup leaves none behind', () => {
   it('repeats until a removal no longer rebuilds a match', () => {
-    expect(removeAll('<scr<script></script>ipt>', /<script\b[^>]*>[\s\S]*?<\/script>/gi)).toBe(
-      '<script>',
-    );
+    // One pass over "aabb" removes the middle "ab" and joins the rest into a new "ab".
+    expect('aabb'.replace(/ab/g, '')).toBe('ab');
+    expect(removeAll('aabb', /ab/g)).toBe('');
     expect(removeAll('<<b>b>bold</b>', /<[^>]+>/g)).not.toMatch(/<[^>]+>/);
     expect(removeAll('plain text', /<[^>]+>/g)).toBe('plain text');
   });
