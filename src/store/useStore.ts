@@ -8,6 +8,7 @@ import {
   inspect,
   listOperations,
   MAX_AUTO_DEPTH,
+  randomId,
   rewrap,
   toChain,
   type BakeResult,
@@ -195,7 +196,7 @@ function encodingFor(payload: string, current: string): string {
 
 function newStep(op: OperationDef): RecipeStep {
   return {
-    uid: `${op.id}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    uid: randomId(op.id),
     opId: op.id,
     args: op.args.map((a) => ({ ...a })),
     disabled: false,
@@ -441,7 +442,7 @@ export const useStore = create<State>((set, get) => ({
     if (steps.length === 0) return;
 
     const result = rewrap(steps, operations, () =>
-      `rewrap-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      randomId('rewrap'),
     );
     if (!result.ok) {
       set({ rewrapBlockers: result.blockers });
@@ -581,7 +582,7 @@ export const useStore = create<State>((set, get) => ({
     set({
       steps: steps.map((s) => ({
         ...s,
-        uid: `${s.opId}-${Math.random().toString(36).slice(2, 8)}`,
+        uid: randomId(s.opId),
         args: s.args.map((a) => ({ ...a })),
       })),
       breakpoints: [],
@@ -624,7 +625,7 @@ export const useStore = create<State>((set, get) => ({
     set({
       steps: hint.steps.map((s) => ({
         ...s,
-        uid: `${s.opId}-${Math.random().toString(36).slice(2, 8)}`,
+        uid: randomId(s.opId),
         args: s.args.map((a) => ({ ...a })),
       })),
       breakpoints: [],
@@ -640,7 +641,7 @@ export const useStore = create<State>((set, get) => ({
     set({
       steps: steps.map((step) => ({
         ...step,
-        uid: `${step.opId}-${Math.random().toString(36).slice(2, 8)}`,
+        uid: randomId(step.opId),
         args: step.args.map((a) => ({ ...a })),
       })),
       breakpoints: [],

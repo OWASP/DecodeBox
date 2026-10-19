@@ -94,7 +94,7 @@ export function OutputPane() {
             <span className="rounded-chip border border-line px-1.5 py-px font-mono text-[10px] uppercase tracking-wider text-muted">
               {isImage ? 'image' : json ? 'json' : 'text'}
             </span>
-            <span className="font-mono text-micro tabular-nums text-faint">
+            <span className="font-mono text-micro tabular-nums text-faint max-sm:hidden">
               {formatBytes(output.length)}
               {!isImage && ` · ${t.status.lines(shown.split('\n').length)}`}
             </span>

@@ -1,4 +1,5 @@
 import type { OperationDef, RecipeStep } from '../engine';
+import { randomId } from '../engine';
 
 
 const VERSION = 1;
@@ -152,7 +153,7 @@ export async function decodeShare(
     if (!definition) continue;
 
     steps.push({
-      uid: `${entry.op}-${Math.random().toString(36).slice(2, 9)}`,
+      uid: randomId(entry.op),
       opId: entry.op,
       args: definition.args.map((arg) => {
         const toggle = entry.toggles?.[arg.name];

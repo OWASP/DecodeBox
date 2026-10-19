@@ -1,4 +1,5 @@
 import { OperationError } from '../types';
+import { removeAll } from '../core/strip';
 import { arg, type Operation } from './types';
 
 function parseCsv(text: string, delimiter: string): string[][] {
@@ -137,7 +138,11 @@ export const structuredOperations: Operation[] = [
     },
     detection: {
       formatName: 'CSV',
-      pattern: /^[^\n,]*,[^\n,]*(,[^\n,]*)*(\r?\n[^\n]*,[^\n]*)+$/,
+      // Every line holds a comma. Each line can match in exactly one way: up to its first comma,
+      // then the rest of the line. The earlier `[^\n]*,[^\n]*` could split a line at any of its
+      // commas, and on input that failed at the end those choices multiplied line by line: 16
+      // lines of ",,," froze the page. Detection runs on whatever is pasted, so it must be linear.
+      pattern: /^[^\r\n,]*,[^\r\n]*(?:\r?\n[^\r\n,]*,[^\r\n]*)+\r?$/,
       minLength: 12,
     },
   },
@@ -282,7 +287,7 @@ export const structuredOperations: Operation[] = [
     run: (input, args) => {
       const text = arg(args, 'Preserve comments', true)
         ? input
-        : input.replace(/<!--[\s\S]*?-->/g, '');
+        : removeAll(input, /<!--[\s\S]*?-->/g);
       return text.replace(/>\s+</g, '><').trim();
     },
   },
@@ -307,7 +312,7 @@ export const structuredOperations: Operation[] = [
         case 'SQL':
           return input.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').trimEnd();
         case 'XML / HTML':
-          return input.replace(/<!--[\s\S]*?-->/g, '').trimEnd();
+          return removeAll(input, /<!--[\s\S]*?-->/g).trimEnd();
         default:
           return input
             .replace(/\/\*[\s\S]*?\*\//g, '')

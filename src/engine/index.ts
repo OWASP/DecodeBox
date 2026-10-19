@@ -67,6 +67,7 @@ export const INPUT_ENCODINGS: string[] = ['Raw bytes', ...ENCODABLE_CHARSET_NAME
 
 export { asBytes } from './core/bytes';
 export { hexdumpOf } from './core/views';
+export { randomId } from './core/uid';
 export { rewrap, INVERSES, whyNotInvertible } from './core/rewrap';
 export type { RewrapResult, RewrapBlocker } from './core/rewrap';
 

@@ -1,4 +1,5 @@
 import type { OperationDef, RecipeStep } from '../engine';
+import { randomId } from '../engine';
 import { safeArgValue } from './share';
 
 
@@ -75,7 +76,7 @@ export function fromText(text: string, operations: OperationDef[]): ParseResult 
     }
 
     steps.push({
-      uid: `${entry.op}-${Math.random().toString(36).slice(2, 9)}`,
+      uid: randomId(entry.op),
       opId: entry.op,
       args: definition.args.map((arg) => ({
         ...arg,

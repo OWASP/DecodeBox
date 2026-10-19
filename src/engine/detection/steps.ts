@@ -1,5 +1,6 @@
 import type { OperationArg, RecipeStep } from '../types';
 import { getOperation } from '../operations';
+import { randomId } from '../core/uid';
 import type { Operation } from '../operations/types';
 
 /*
@@ -11,7 +12,7 @@ import type { Operation } from '../operations/types';
  */
 
 function uid(opId: string): string {
-  return `${opId}-${Math.random().toString(36).slice(2, 9)}`;
+  return randomId(opId);
 }
 
 type Overrides = Record<string, string | number | boolean>;
