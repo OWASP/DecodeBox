@@ -150,7 +150,7 @@ host will serve it.
 ### One File, No Install
 
 There is a **Download DecodeBox** button in the header of the running application. It hands you
-`decodebox.html`: the whole thing in a single 1.1 MB file — the interface, all 504 operations, the
+`decodebox.html`: the whole thing in a single 1.2 MB file — the interface, all 504 operations, the
 fonts, the styles. Double-click it and it runs. No server, no npm, no network, nothing to install,
 which is the point on an air-gapped machine where getting a build toolchain in is harder than
 getting one file in.
