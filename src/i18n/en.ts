@@ -33,7 +33,7 @@ export const t = {
     findings: 'Findings',
     indicators: 'Indicators',
     noFindings: 'Nothing flagged. No credentials, keys, dangerous commands or known bad patterns matched in any layer.',
-    noIndicators: 'No addresses, hosts or hashes found in any layer.',
+    noIndicators: 'No addresses, hosts, hashes, paths or keys found in any layer.',
     empty: 'Paste something into input.txt and DecodeBox will map what is inside it.',
     working: 'Analysing…',
     truncated: 'The tree hit a bound and is not exhaustive.',
@@ -220,7 +220,7 @@ export const t = {
     indicators: 'Indicators',
     layers: 'Layers',
     foundAt: 'Found at',
-    noIndicators: 'No addresses, hosts, paths or keys were found at any layer.',
+    noIndicators: 'No addresses, hosts, hashes, paths or keys found in any layer.',
     defangNote:
       'Indicators are shown defanged, so they can be pasted into a ticket without anything becoming a live link.',
   },
@@ -252,9 +252,9 @@ export const t = {
     kinds: {
       flag: 'flag',
       decode: 'decode',
-      crack: 'cracked',
+      crack: 'crack',
       shape: 'shape',
-      identify: 'identity',
+      identify: 'identify',
       inspect: 'inspect',
     },
     privacy: 'Every layer was decoded in this browser. Nothing was uploaded.',
@@ -384,7 +384,7 @@ export const t = {
     version: 'Version',
     built: 'Built',
     button: 'Download the file',
-    size: 'about 1 MB',
+    size: 'about 1.2 MB',
   },
 
   help: {
