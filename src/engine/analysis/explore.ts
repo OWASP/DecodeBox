@@ -1,6 +1,7 @@
 import type { Layer, RecipeStep } from '../types';
 import { getOperation } from '../operations';
 import { byteLength, previewText } from '../core/bytes';
+import { randomId } from '../core/uid';
 import { detect } from '../detection/detect';
 import { findEmbedded } from '../detection/embedded';
 import type { AnalysisNode, AnalyseOptions } from './types';
@@ -98,7 +99,7 @@ function makeNode(
 ): AnalysisNode {
   const path = extendPath(parentPath, format);
   return {
-    id: `${format}-${depth}-${Math.random().toString(36).slice(2, 8)}`,
+    id: randomId(`${format}-${depth}`),
     format,
     confidence,
     depth,

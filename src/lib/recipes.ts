@@ -1,4 +1,5 @@
 import type { OperationArg, RecipeStep } from '../engine';
+import { randomId } from '../engine';
 import { safeArgValue } from './share';
 
 export interface SavedRecipe {
@@ -88,7 +89,7 @@ function persist(recipes: SavedRecipe[]): SavedRecipe[] {
 
 export function saveRecipe(name: string, steps: RecipeStep[]): SavedRecipe[] {
   const recipe: SavedRecipe = {
-    id: `r-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    id: randomId('r'),
     name: name.trim() || 'Untitled recipe',
     steps: steps.map((s) => ({ ...s, args: s.args.map((a) => ({ ...a })) })),
     savedAt: Date.now(),
@@ -103,7 +104,7 @@ export function deleteRecipe(id: string): SavedRecipe[] {
 export function instantiate(recipe: SavedRecipe): RecipeStep[] {
   return recipe.steps.map((step) => ({
     ...step,
-    uid: `${step.opId}-${Math.random().toString(36).slice(2, 9)}`,
+    uid: randomId(step.opId),
     args: step.args.map((a) => ({ ...a })),
   }));
 }

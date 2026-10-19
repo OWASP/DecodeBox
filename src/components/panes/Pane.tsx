@@ -18,7 +18,9 @@ export function Pane({ title, step, meta, actions, children, className }: Props)
       className={cx('flex min-h-0 min-w-0 flex-1 flex-col bg-bg', className)}
     >
       <div className="flex h-[24px] shrink-0 items-center justify-between gap-2 px-3">
-        <div className="flex min-w-0 items-center gap-1.5">
+        {/* The bar is one line tall. On a narrow screen the badges are clipped rather than
+            wrapped, because wrapped text grows past the bar and over the header above it. */}
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
           <h2 className="flex items-center gap-1.5 text-[11px] leading-none text-faint">
             {step !== undefined && (
               <>

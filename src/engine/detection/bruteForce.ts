@@ -1,5 +1,6 @@
 import type { Candidate, Evidence, RecipeStep } from '../types';
 import { asBytes, bytesToLatin1, previewText } from '../core/bytes';
+import { randomId } from '../core/uid';
 import { containsMarker, readability } from './readability';
 
 
@@ -67,7 +68,7 @@ function evidenceFor(output: string, score: number, how: string): Evidence[] {
 }
 
 function uid(opId: string): string {
-  return `${opId}-${Math.random().toString(36).slice(2, 9)}`;
+  return randomId(opId);
 }
 
 function xorStep(key: string): RecipeStep {

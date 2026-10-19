@@ -1,4 +1,5 @@
 import { OperationError } from '../types';
+import { removeAll } from '../core/strip';
 import { arg, type Operation } from './types';
 
 function buildRegex(pattern: string, flags: string): RegExp {
@@ -239,10 +240,9 @@ export const textOperations: Operation[] = [
     run: (input, args) => {
       let text = input;
       if (arg(args, 'Remove scripts and styles', true)) {
-        text = text.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
+        text = removeAll(text, /<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi);
       }
-      return text
-        .replace(/<[^>]+>/g, '')
+      return removeAll(text, /<[^>]+>/g)
         .replace(/&nbsp;/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
