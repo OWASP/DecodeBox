@@ -219,6 +219,21 @@ const MAX_DECODE_DEPTH = MAX_AUTO_DEPTH;
 let analysisToken = 0;
 let ctfToken = 0;
 
+/*
+ * What the deeper pass in flight was started on. Opening the Search view
+ * starts a pass of its own unless the running one is over the same input.
+ */
+let ctfStartedOn: { input: string; inputEncoding: string } | null = null;
+
+function ctfRunningOn(state: State): boolean {
+  return (
+    state.ctfRunning &&
+    ctfStartedOn !== null &&
+    ctfStartedOn.input === state.input &&
+    ctfStartedOn.inputEncoding === state.inputEncoding
+  );
+}
+
 export const useStore = create<State>((set, get) => ({
   input: '',
   inputEncoding: read(ENCODING_KEY, 'UTF-8'),
@@ -599,10 +614,17 @@ export const useStore = create<State>((set, get) => ({
     }
 
     const token = ++ctfToken;
+    ctfStartedOn = { input, inputEncoding };
     set({ ctfRunning: true });
     const report = await hints(encodeInput(input, inputEncoding), { format: searchTerm });
     if (token !== ctfToken) return;
 
+    ctfStartedOn = null;
+    // Unwrapped from an input that has since been replaced, so it describes nothing on screen.
+    if (get().input !== input || get().inputEncoding !== inputEncoding) {
+      set({ ctfRunning: false });
+      return;
+    }
     set({ ctf: report, ctfRunning: false });
   },
 
@@ -691,7 +713,7 @@ export const useStore = create<State>((set, get) => ({
     set({ activity, view });
     write('decodebox-activity', activity);
 
-    if (view === 'ctf' && !get().ctfRunning) void get().runCtf();
+    if (view === 'ctf' && !ctfRunningOn(get())) void get().runCtf();
   },
 
   setSidebarOpen: (open) => {
