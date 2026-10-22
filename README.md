@@ -7,7 +7,7 @@
 
 **Encode. Decode. Identify.** Smart decoding for any data.
 
-[![DecodeBox auto-decoding a layered payload](docs/screenshot.png)](https://owasp.github.io/DecodeBox/)
+<https://github.com/user-attachments/assets/9edc3ce9-4004-4f4f-b499-03302340a4f4>
 
 ---
 
