@@ -7,7 +7,7 @@
 
 **Encode. Decode. Identify.** Smart decoding for any data.
 
-<https://github.com/user-attachments/assets/9edc3ce9-4004-4f4f-b499-03302340a4f4>
+<https://github.com/user-attachments/assets/93eb8f92-7e93-4324-8d94-73d7040379f0>
 
 ---
 
