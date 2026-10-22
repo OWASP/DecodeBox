@@ -73,6 +73,22 @@ describe('flags', () => {
     expect(findFlags('if (x) { doSomething(); }', 0, '')).toHaveLength(0);
     expect(findFlags('function f() {}', 0, '')).toHaveLength(0);
   });
+
+  it('accepts a declared format typed with its opening brace', () => {
+    expect(findFlags('weirdname{value}', 0, '', 'weirdname{')[0]?.known).toBe(true);
+  });
+
+  /*
+   * The format is whatever is in the search box when the deeper pass runs, so
+   * it can be the first letter of "flag{". "f" is also a hex digit.
+   */
+  it('does not take a lone letter for a declared format', () => {
+    expect(findFlags('0d3f36367a3e35343f767a23352f7a3c', 0, '', 'f')).toHaveLength(0);
+  });
+
+  it('looks for a declared format only where a word starts', () => {
+    expect(findFlags('0d3f36c0ffee7a3e35343f767a23', 0, '', 'fe')).toHaveLength(0);
+  });
 });
 
 describe('index of coincidence', () => {
@@ -262,6 +278,21 @@ describe('CTF mode', () => {
     const report = await hints('   \n  ');
     expect(report.hints).toHaveLength(0);
     expect(report.flags).toHaveLength(0);
+  });
+
+  it('finds the same one flag whatever part of its format is in the box', async () => {
+    const plain =
+      'Well done, you found it. The flag is flag{x0r_is_not_encryption} and the next stage is open.';
+    const hex = Buffer.from(Buffer.from(plain, 'latin1').map((b) => b ^ 0x5a)).toString('hex');
+
+    for (const format of ['', 'f', 'fl', 'flag', 'flag{']) {
+      const report = await hints(hex, { format });
+      expect(report.flags.map((f) => f.text), format).toEqual(['flag{x0r_is_not_encryption}']);
+      expect(
+        report.hints.filter((h) => h.kind === 'flag').map((h) => h.title),
+        format,
+      ).toEqual(['flag{x0r_is_not_encryption}']);
+    }
   });
 });
 
