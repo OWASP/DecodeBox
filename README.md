@@ -5,7 +5,7 @@
 [![Live Site](https://img.shields.io/badge/demo-owasp.github.io%2FDecodeBox-orange.svg)](https://owasp.github.io/DecodeBox/)
 [![Client-side](https://img.shields.io/badge/processing-100%25_local-green.svg)](#security--privacy)
 
-**Encode. Decode. Identify.** Smart decoding for any data.
+**Encode. Decode. Identify.**
 
 <https://github.com/user-attachments/assets/93eb8f92-7e93-4324-8d94-73d7040379f0>
 
