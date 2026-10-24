@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-LwLFbCpPJg0krGHJ/a25sWnSyYlFoU1TlGCPUsNWnFM='; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'none'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      The Content Security Policy is injected at build time by vite.config.ts,
+      not written here. It has to be: the policy hashes the inline script below,
+      and connect-src 'none' would otherwise block the dev server's hot-reload
+      socket. See the cspPlugin comment for the policy itself.
+    -->
+
+    <title>OWASP DecodeBox</title>
+    <meta name="description" content="Encode. Decode. Identify." />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#121314" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+    <!--
+      Link previews in chat apps and social sites. Crawlers need absolute URLs and never run
+      the page, so these point at the published site rather than at a relative path.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="OWASP DecodeBox" />
+    <meta property="og:title" content="OWASP DecodeBox" />
+    <meta property="og:description" content="Encode. Decode. Identify." />
+    <meta property="og:url" content="https://owasp.github.io/DecodeBox/" />
+    <meta property="og:image" content="https://owasp.github.io/DecodeBox/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="DecodeBox auto-decoding a Base64, gzip and JSON payload" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script>
+      // Applied before first paint so the page never flashes the wrong theme.
+      // Wrapped because storage access throws outright in some privacy modes.
+      try {
+        var t = localStorage.getItem('decodebox-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {
+        /* no stored preference; the media query decides */
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-B-TV9q5s.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D50vK8d0.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      DecodeBox runs entirely in your browser and needs JavaScript enabled. Nothing you paste is
+      ever uploaded — the processing has to happen locally, which is the point.
+    </noscript>
+  </body>
+</html>
