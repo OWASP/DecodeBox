@@ -22,27 +22,27 @@
     "test": "vitest"
   },
   "dependencies": {
-    "lucide-react": "1.58.0",
+    "lucide-react": "1.64.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "zustand": "5.0.15"
+    "zustand": "5.0.16"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "26.6.5",
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
-    "eslint": "10.12.0",
+    "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "16.5.0",
-    "postcss": "8.5.30",
+    "postcss": "8.5.32",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.71.2",
-    "vite": "8.3.4",
+    "typescript-eslint": "8.72.1",
+    "vite": "8.3.5",
     "vitest": "5.0.5"
   },
   "allowScripts": {
