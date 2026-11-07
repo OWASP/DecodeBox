@@ -374,6 +374,69 @@ describe('operations that work on text read UTF-8 input as text', () => {
     }
     expect(broken).toEqual([]);
   });
+
+  describe('UTF-8 text', () => {
+    it('find-replace matches a Persian needle', async () => {
+      expect(
+        await text('درود بر تو', ['find-replace', { Find: 'درود', Replace: 'روز خوش' }]),
+      ).toBe('روز خوش بر تو');
+    });
+
+    it('find-replace in Simple string mode matches a Persian needle', async () => {
+      expect(
+        await text('درود بر تو', [
+          'find-replace',
+          { Find: 'درود', Replace: 'روز خوش', Type: 'Simple string' },
+        ]),
+      ).toBe('روز خوش بر تو');
+    });
+
+    it('filter-lines keeps the Persian line', async () => {
+      expect(await text('درود\nروز خوش\nبدرود', ['filter-lines', { Pattern: '^درود$' }])).toBe(
+        'درود',
+      );
+    });
+
+    it('filter-lines inverted drops the Persian line', async () => {
+      expect(
+        await text('درود\nروز خوش\nبدرود', [
+          'filter-lines',
+          { Pattern: '^درود$', Invert: true },
+        ]),
+      ).toBe('روز خوش\nبدرود');
+    });
+
+    it('count-occurrences counts a Persian needle', async () => {
+      expect(
+        await text('روز خوش، روز خوش، بدرود', ['count-occurrences', { Search: 'روز' }]),
+      ).toBe('2');
+    });
+
+    it('regular-expression extracts a Persian match', async () => {
+      expect(
+        await text('خط اول درود\nخط دوم', ['regular-expression', { Pattern: 'درود' }]),
+      ).toBe('درود');
+    });
+
+    it('wrap-lines width 5 never splits a Persian character', async () => {
+      const wrapped = await text('درود، جهان زیباست', ['wrap-lines', { Width: 5 }]);
+      const mojibake = /[\u00C0-\u00FF]/.test(wrapped) && !/[\u0600-\u06FF]/.test(wrapped);
+      expect(mojibake).toBe(false);
+      expect(wrapped.replace(/\n/g, '')).toBe('درود، جهان زیباست');
+    });
+
+    it('escape-smart-characters maps the em-dash inside Persian text', async () => {
+      expect(await text('درود — جهان', 'escape-smart-characters')).toBe('درود -- جهان');
+    });
+
+    it('escape-smart-characters maps the ellipsis inside Persian text', async () => {
+      expect(await text('درود…', 'escape-smart-characters')).toBe('درود...');
+    });
+
+    it('reverse reverses Persian code points, not bytes', async () => {
+      expect(await text('درود', 'reverse')).toBe('دورد');
+    });
+  });
 });
 
 describe('file-format parsers read real structures', () => {
