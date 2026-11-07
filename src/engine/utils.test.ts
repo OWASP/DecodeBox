@@ -138,12 +138,21 @@ describe('comparison', () => {
     expect(await run('same\nsame', 'levenshtein-distance')).toBe('0');
   });
 
+  it('levenshtein-distance measures Persian chars, not bytes', async () => {
+    expect(await run('درود\nروز خوش', 'levenshtein-distance')).toBe('6');
+  });
+
   it('ranks fuzzy matches with the best first', async () => {
     const ranked = await run('src/engine/bytes.ts\nsrc/components/Pane.tsx\nREADME.md', [
       'fuzzy-match',
       { Search: 'byts' },
     ]);
     expect(ranked.split('\n')[0]).toContain('bytes.ts');
+  });
+
+  it('fuzzy-match ranks the Persian needle first', async () => {
+    const ranked = await run('درود\nروز خوش\nبدرود', ['fuzzy-match', { Search: 'درود' }]);
+    expect(ranked.split('\n')[0]).toContain('درود');
   });
 
   it('marks the offsets every sample agrees on', async () => {

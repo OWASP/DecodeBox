@@ -111,6 +111,13 @@ const READS_TEXT = new Set<string>([
   'nt-hash',
   'citrix-ctx1-encode',
   'citrix-ctx1-decode',
+  'find-replace',
+  'filter-lines',
+  'count-occurrences',
+  'regular-expression',
+  'wrap-lines',
+  'levenshtein-distance',
+  'fuzzy-match',
 ]);
 
 const READS_TEXT_ONLY = new Set<string>(['lzstring-compress']);

@@ -22,6 +22,17 @@ describe('finding a string across every layer', () => {
     expect(hits[0]?.path).toContain('Base64');
   });
 
+  it('finds Persian text buried under base64 layers', async () => {
+    const buried = wrap('{"msg":"درود بر تو"}', 2);
+    const { root } = await analyse(buried);
+
+    expect(buried).not.toContain('درود');
+
+    const hits = findInLayers(root, 'درود');
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]?.match).toBe('درود');
+  });
+
   it('says where it found it, and what was around it', async () => {
     const { root } = await analyse(BURIED);
     const [hit] = findInLayers(root, 'admin');
