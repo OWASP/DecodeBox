@@ -488,3 +488,48 @@ describe('file-format parsers read real structures', () => {
     expect(report).toContain('2026-10-16T23:41:11Z');
   });
 });
+
+describe('edge cases the property tests turned up', () => {
+  it('Base45 keeps a leading or trailing space, which is one of its digits', async () => {
+    expect(await bytesOut(fromHex('1401'), 'to-base45')).toBe(' N2');
+    expect(toHex(await bytesOut(' N2', 'from-base45'))).toBe('1401');
+    expect(await text('BB8\n', 'from-base45')).toBe('AB');
+  });
+
+  it('Base58 turns each leading 1 into one zero byte, and nothing into nothing', async () => {
+    expect(await bytesOut('', 'from-base58')).toBe('');
+    expect(toHex(await bytesOut('1', 'from-base58'))).toBe('00');
+    expect(toHex(await bytesOut('11', 'from-base58'))).toBe('0000');
+    expect(toHex(await bytesOut('112', 'from-base58'))).toBe('000001');
+  });
+
+  it('Base62 keeps leading zero bytes, one zero digit each', async () => {
+    expect(await bytesOut(fromHex('000041'), 'to-base62')).toBe('0013');
+    expect(toHex(await bytesOut('0013', 'from-base62'))).toBe('000041');
+    expect(toHex(await bytesOut('00', 'from-base62'))).toBe('0000');
+  });
+
+  it('URL decoding gives exactly the bytes the escapes name', async () => {
+    expect(toHex(await bytesOut('%C3%A9', 'url-decode'))).toBe('c3a9');
+    expect(toHex(await bytesOut('%FF%00%41', 'url-decode'))).toBe('ff0041');
+    expect(await text('a+b%20c%E2%82%AC', 'url-decode')).toBe('a b c€');
+    expect(await refusal('100%', 'url-decode')).toMatch(/percent-escape/);
+    expect(await refusal('%zz', 'url-decode')).toMatch(/percent-escape/);
+  });
+
+  it('Unicode escapes write characters beyond U+FFFF in a form that reads back', async () => {
+    expect(await text('😀', 'escape-unicode')).toBe('\\ud83d\\ude00');
+    expect(await text('😀', ['escape-unicode', { Prefix: '%u' }])).toBe('%ud83d%ude00');
+    expect(await text('😀', ['escape-unicode', { Prefix: 'U+' }])).toBe('U+1f600');
+    expect(await text('😀', ['escape-unicode', { Prefix: '&#x' }])).toBe('&#x1f600;');
+    for (const prefix of ['\\u', '%u', 'U+']) {
+      expect(await text('a😀é', ['escape-unicode', { Prefix: prefix }], 'unescape-unicode')).toBe('a😀é');
+    }
+  });
+
+  it('a case-insensitive regex covers letters beyond ASCII too', async () => {
+    expect(await text('café', 'to-case-insensitive-regex')).toBe('[cC][aA][fF][éÉ]');
+    expect(await text('[cC][aA][fF][éÉ]', 'from-case-insensitive-regex')).toBe('café');
+    expect(await text('Straße', 'to-case-insensitive-regex')).toBe('[sS][tT][rR][aA]ß[eE]');
+  });
+});

@@ -232,9 +232,14 @@ export const casingOperations: Operation[] = [
         throw new OperationError('Input is not a valid regular expression.');
       }
 
-      const literals = input.replace(/[a-zA-Z]/g, (letter, offset: number) => {
-        if (input[offset - 1] === '-' || input[offset + 1] === '-') return letter;
-        return `[${letter.toLowerCase()}${letter.toUpperCase()}]`;
+      // Any letter with one lower and one upper form, not just ASCII: é and É.
+      // A letter like ß, whose capital is two letters, has no class to go in.
+      const literals = input.replace(/\p{L}/gu, (letter: string, offset: number) => {
+        if (input[offset - 1] === '-' || input[offset + letter.length] === '-') return letter;
+        const lower = letter.toLowerCase();
+        const upper = letter.toUpperCase();
+        if (lower === upper || [...lower].length !== 1 || [...upper].length !== 1) return letter;
+        return `[${lower}${upper}]`;
       });
 
       return literals
@@ -262,7 +267,7 @@ export const casingOperations: Operation[] = [
     aliases: ['simplify regex', 'case sensitive'],
     args: [],
     run: (input) =>
-      input.replace(/\[([a-z])([a-z])\]/gi, (match, first: string, second: string) =>
+      input.replace(/\[(\p{L})(\p{L})\]/gu, (match, first: string, second: string) =>
         first.toUpperCase() === second.toUpperCase() ? first : match,
       ),
   },

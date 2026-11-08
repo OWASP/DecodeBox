@@ -1,0 +1,8 @@
+# Read by OSV-Scanner and by the OpenSSF Scorecard "Vulnerabilities" check.
+# Every entry needs a reason it does not affect DecodeBox and a date it expires,
+# so nothing stays ignored by default.
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-02-08
+reason = "minimatch 10.2.6 (globparts amplification) is a development dependency only, reached through ESLint and typescript-eslint, which match the glob patterns in our own eslint.config.js. The attack needs an attacker-written pattern, and anyone who can edit that file can already run code through it. Nothing from minimatch is in the built site. The fix, minimatch 11, is a rewrite outside the range ESLint supports (^10.2.6); remove this entry when ESLint moves to it."

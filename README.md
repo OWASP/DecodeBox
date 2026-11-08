@@ -18,7 +18,7 @@ payloads, and the analysis report is complete.
 
 - **Engine:** 504 operations across data formats, ciphers, public-key cryptography, hashing,
   compression, networking, forensics, multimedia and extractors. Every one is covered by a
-  round-trip or a published known-answer test — 1,109 tests in all.
+  round-trip or a published known-answer test — 1,167 tests in all.
 - **Interface:** Three modes — a workspace for transforming, a report for understanding, and a
   CTF mode for working out what to try next, deployed at
   **[owasp.github.io/DecodeBox](https://owasp.github.io/DecodeBox/)**.
@@ -140,7 +140,7 @@ Requires Node.js 22.12 or later. CI builds on 22 and 24; `.nvmrc` pins 22 for de
 ```bash
 npm install
 npm run dev     # development server
-npm run test    # 1,109 tests
+npm run test    # 1,167 tests
 npm run build   # static site in dist/
 ```
 
