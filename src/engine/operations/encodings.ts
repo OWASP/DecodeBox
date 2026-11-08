@@ -101,8 +101,11 @@ function toBase45(bytes: Uint8Array): string {
   return out;
 }
 
+// A space is digit 36 in Base45, so only line breaks and tabs can go.
+const trimBase45 = (text: string): string => text.replace(/^[\t\r\n]+|[\t\r\n]+$/g, '');
+
 function fromBase45(text: string): Uint8Array {
-  const cleaned = text.trim().toUpperCase();
+  const cleaned = trimBase45(text).toUpperCase();
   const digits = Array.from(cleaned, (char) => {
     const index = B45.indexOf(char);
     if (index === -1) throw new OperationError(`'${char}' is not a Base45 character.`);
@@ -137,6 +140,16 @@ const B62_OPTIONS = Object.keys(B62_ALPHABETS);
 
 function base62Alphabet(name: string): string {
   return B62_ALPHABETS[name] ?? B62_ALPHABETS[B62_DEFAULT]!;
+}
+
+/*
+ * A base change sees only the number, and a number has no leading zeros, so
+ * Base62 sets them aside the way Base58 does: one zero digit per zero byte.
+ */
+function leadingCount(values: number[], value: number): number {
+  let count = 0;
+  while (count < values.length && values[count] === value) count++;
+  return count;
 }
 
 function changeBase(digits: number[], from: number, to: number): number[] {
@@ -410,7 +423,7 @@ export const encodingOperations: Operation[] = [
          * constraint rather than a guess, and it is most of what separates
          * this from an upper-case sentence.
          */
-        const cleaned = text.trim();
+        const cleaned = trimBase45(text);
         if (cleaned.length % 3 === 1) return null;
         return {
           label: `${cleaned.length} characters, a length Base45 can produce`,
@@ -432,9 +445,10 @@ export const encodingOperations: Operation[] = [
       const alphabet = base62Alphabet(String(arg(args, 'Alphabet', B62_DEFAULT)));
       const bytes = Array.from(asBytes(input));
       if (bytes.length === 0) return '';
-      return changeBase(bytes, 256, 62)
-        .map((d) => alphabet[d]!)
-        .join('');
+      const zeros = leadingCount(bytes, 0);
+      const rest = bytes.slice(zeros);
+      const digits = rest.length > 0 ? changeBase(rest, 256, 62) : [];
+      return alphabet[0]!.repeat(zeros) + digits.map((d) => alphabet[d]!).join('');
     },
   },
   {
@@ -453,7 +467,10 @@ export const encodingOperations: Operation[] = [
         if (index === -1) throw new OperationError(`'${char}' is not a Base62 character.`);
         return index;
       });
-      return bytesToLatin1(new Uint8Array(changeBase(digits, 62, 256)));
+      const zeros = leadingCount(digits, 0);
+      const rest = digits.slice(zeros);
+      const bytes = rest.length > 0 ? changeBase(rest, 62, 256) : [];
+      return bytesToLatin1(new Uint8Array([...new Array<number>(zeros).fill(0), ...bytes]));
     },
   },
   {

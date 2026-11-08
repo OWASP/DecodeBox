@@ -51,7 +51,9 @@ function base58Alphabet(args: OperationArg[]): string {
 
 function encodeBase58(bytes: Uint8Array, B58_ALPHABET: string): string {
   if (bytes.length === 0) return '';
-  const digits: number[] = [0];
+  // Zero has no digits. Leading zero bytes are written as 1s below, one each,
+  // so starting from a 0 digit gave an all-zero input one 1 too many.
+  const digits: number[] = [];
   for (const byte of bytes) {
     let carry = byte;
     for (let i = 0; i < digits.length; i++) {
@@ -75,7 +77,7 @@ function encodeBase58(bytes: Uint8Array, B58_ALPHABET: string): string {
 
 function decodeBase58(text: string, B58_ALPHABET: string): Uint8Array {
   const cleaned = text.trim();
-  const bytes: number[] = [0];
+  const bytes: number[] = [];
   for (const char of cleaned) {
     const index = B58_ALPHABET.indexOf(char);
     if (index === -1) throw new OperationError(`'${char}' is not a Base58 character.`);
@@ -285,11 +287,17 @@ export const dataFormatOperations: Operation[] = [
     args: [{ name: 'Treat + as space', type: 'boolean', value: true }],
     run: (input, args) => {
       const prepared = arg(args, 'Treat + as space', true) ? input.replace(/\+/g, ' ') : input;
-      try {
-        return decodeURIComponent(prepared);
-      } catch {
+      if (/%(?![0-9a-fA-F]{2})/.test(prepared)) {
         throw new OperationError('Input contains an invalid percent-escape sequence.');
       }
+      /*
+       * Each escape names one byte. decodeURIComponent insists the bytes are
+       * UTF-8 (so %FF failed) and hands back characters, which turned %C3%A9
+       * into the single byte e9 for whatever step came next.
+       */
+      return prepared.replace(/%([0-9a-fA-F]{2})/g, (_, hex: string) =>
+        String.fromCharCode(parseInt(hex, 16)),
+      );
     },
     detection: {
       formatName: 'URL encoding',
@@ -603,12 +611,20 @@ export const dataFormatOperations: Operation[] = [
       const suffix = prefix === '&#x' ? ';' : '';
       const narrow = prefix === '\\x' ? 2 : 4;
 
+      const write = (value: number): string => {
+        const hex = value.toString(16).padStart(value > 0xff ? 4 : narrow, '0');
+        return prefix + (upper ? hex.toUpperCase() : hex) + suffix;
+      };
+      // \u and %u take exactly four hex digits, so a character past U+FFFF goes
+      // out as its UTF-16 surrogate pair, the way JSON and JavaScript write it.
+      const pairs = prefix === '\\u' || prefix === '%u';
+
       return Array.from(input)
         .map((char) => {
           const code = char.codePointAt(0) ?? 0;
           if (!all && code <= 127) return char;
-          const hex = code.toString(16).padStart(code > 0xff ? 4 : narrow, '0');
-          return prefix + (upper ? hex.toUpperCase() : hex) + suffix;
+          if (pairs && code > 0xffff) return write(char.charCodeAt(0)) + write(char.charCodeAt(1));
+          return write(code);
         })
         .join('');
     },

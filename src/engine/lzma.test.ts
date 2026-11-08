@@ -110,3 +110,34 @@ describe('LZMA Compress', () => {
     expect(compressed.length).toBeLessThan(value.length / 20);
   }, 60000);
 });
+
+describe('LZMA distances at the end of the special-position table', () => {
+  /*
+   * A match 112 or 128 bytes back codes its low distance bits through the
+   * last probability of that table. Both coders indexed it one place too far,
+   * read past the end of the array, and the range coder turned to NaN.
+   */
+  const BLOCK =
+    '82b70eee7f1a5039bef07ec2347f066ed08f5dc7512447e3404300026b6e545594a065685d64c4980bb8d454' +
+    '4a8721a99a01ad219eb59cf6a15ef6f15a1d830bb7ce09d6bbc004e7175c643c7decb0b580ec37bc9712dd2e' +
+    '6aaeb94bae8d2f9fa29c5a284c9ef7521829cf1079b080e9';
+  // Python's lzma module, FORMAT_ALONE, preset 6: BLOCK twice, so one match 112 back.
+  const STREAM =
+    '5d00000100ffffffffffffffff00412dbdcee45f29217b8d59c747e6f465fe28d1c7e6d3c32e50ff8d18c1ca' +
+    '68280686c20c020d7c7944ee90d26b72b2c2d3b0d7302151c244d7ae673b156f859ed092490bb7af2bc12d48' +
+    '977e12b3e57253de7335421f0ff171a4ef92a6093543c25a411ec7284a1288a350a725b069dd7061b712472a' +
+    '5cc8a109bb7b8a24b3fffe44b000';
+
+  it('reads a liblzma stream whose match is 112 bytes back', async () => {
+    expect(await run(STREAM, 'from-hex', 'lzma-decompress', ['to-hex', { Delimiter: 'None' }])).toBe(
+      BLOCK + BLOCK,
+    );
+  });
+
+  it('compresses a list of numbers and reads it back', async () => {
+    const numbers =
+      '24 161 53 253 127 93 219 125 137 9 193 228 175 50 82 171 234 252 209 122 241 117 66 100 ' +
+      '30 135 252 157 109 167 119 181 174 87 219 217 230 173 10';
+    expect(await run(numbers, 'lzma-compress', 'lzma-decompress')).toBe(numbers);
+  });
+});

@@ -121,6 +121,8 @@ const READS_TEXT = new Set<string>([
   'to-snake-case',
   'to-camel-case',
   'to-kebab-case',
+  'to-case-insensitive-regex',
+  'from-case-insensitive-regex',
 ]);
 
 const READS_TEXT_ONLY = new Set<string>(['lzstring-compress']);

@@ -338,7 +338,7 @@ function decompress(bytes: Uint8Array): Uint8Array {
         const directBits = (slot >> 1) - 1;
         let distance = (2 | (slot & 1)) << directBits;
         if (slot < END_POS_MODEL_INDEX) {
-          distance += decoder.reverseTree(model.specPos, distance - slot, directBits);
+          distance += decoder.reverseTree(model.specPos, distance - slot - 1, directBits);
         } else {
           distance += decoder.direct(directBits - ALIGN_BITS) * (1 << ALIGN_BITS);
           distance += decoder.reverseTree(model.align, 0, ALIGN_BITS);
@@ -509,7 +509,9 @@ function compress(data: Uint8Array, lc: number, lp: number, pb: number): Uint8Ar
       const directBits = (slot >> 1) - 1;
       const base = (2 | (slot & 1)) << directBits;
       if (slot < END_POS_MODEL_INDEX) {
-        encoder.reverseTree(model.specPos, base - slot, directBits, distance - base);
+        // The tree counts from 1, so the table starts one place earlier (as in
+        // the LZMA SDK). Without the - 1, slot 13 read one past the end.
+        encoder.reverseTree(model.specPos, base - slot - 1, directBits, distance - base);
       } else {
         encoder.direct((distance - base) >>> ALIGN_BITS, directBits - ALIGN_BITS);
         encoder.reverseTree(model.align, 0, ALIGN_BITS, (distance - base) & ((1 << ALIGN_BITS) - 1));
