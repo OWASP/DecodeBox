@@ -2,17 +2,22 @@ import { OperationError } from '../types';
 import { arg, type Operation } from './types';
 
 
+/*
+ * A word is letters, combining marks and digits in any script, plus the
+ * zero-width non-joiner that Persian writes inside a single word.
+ * ASCII-only classes cut `café` down to `caf` and Persian to nothing.
+ */
 function words(text: string): string[] {
   return text
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .split(/[^A-Za-z0-9]+/)
+    .replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, '$1 $2')
+    .replace(/(\p{Lu}+)(\p{Lu}\p{Ll})/gu, '$1 $2')
+    .split(/[^\p{L}\p{M}\p{N}\u200c]+/u)
     .filter((word) => word.length > 0);
 }
 
 function eachIdentifier(input: string, convert: (word: string) => string): string {
-  return input.replace(/[A-Za-z0-9_$-]+/g, (token) =>
-    /[A-Za-z]/.test(token) ? convert(token) : token,
+  return input.replace(/[\p{L}\p{M}\p{N}\u200c_$-]+/gu, (token) =>
+    /\p{L}/u.test(token) ? convert(token) : token,
   );
 }
 

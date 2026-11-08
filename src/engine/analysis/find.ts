@@ -1,6 +1,7 @@
 import type { AnalysisNode } from './types';
 import type { RecipeStep } from '../types';
 import { flatten } from './report';
+import { renderText } from '../core/bytes';
 
 
 export interface LayerMatch {
@@ -52,7 +53,8 @@ function searchNode(
   options: FindOptions,
   remaining: number,
 ): LayerMatch[] {
-  const text = node.output.length > MAX_SCAN ? node.output.slice(0, MAX_SCAN) : node.output;
+  const rendered = renderText(node.output);
+  const text = rendered.length > MAX_SCAN ? rendered.slice(0, MAX_SCAN) : rendered;
   const found: LayerMatch[] = [];
 
   pattern.lastIndex = 0;

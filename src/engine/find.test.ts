@@ -32,6 +32,14 @@ describe('finding a string across every layer', () => {
     expect(hit?.steps.length).toBeGreaterThan(0);
   });
 
+  it('finds text beyond ASCII, and shows it as text', async () => {
+    const { root } = await analyse(wrap('{"msg":"درود بر تو"}', 2));
+    const [hit] = findInLayers(root, 'درود');
+
+    expect(hit?.match).toBe('درود');
+    expect(hit?.after).toContain('بر تو');
+  });
+
   it('is case insensitive unless told otherwise', async () => {
     const { root } = await analyse(BURIED);
 

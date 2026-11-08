@@ -76,7 +76,7 @@ import { pgpOperations } from './pgp';
 import { gostOperations } from './gost';
 import { provideRegistry } from './registryAccess';
 import type { Operation } from './types';
-import { bytesToLatin1, renderText, toBytes } from '../core/bytes';
+import { asBytes, bytesToLatin1, toBytes, tryDecodeUtf8 } from '../core/bytes';
 
 const READS_TEXT = new Set<string>([
   'to-upper-case',
@@ -111,6 +111,16 @@ const READS_TEXT = new Set<string>([
   'nt-hash',
   'citrix-ctx1-encode',
   'citrix-ctx1-decode',
+  'find-replace',
+  'filter-lines',
+  'count-occurrences',
+  'regular-expression',
+  'wrap-lines',
+  'levenshtein-distance',
+  'fuzzy-match',
+  'to-snake-case',
+  'to-camel-case',
+  'to-kebab-case',
 ]);
 
 const READS_TEXT_ONLY = new Set<string>(['lzstring-compress']);
@@ -118,6 +128,19 @@ const WRITES_TEXT_ONLY = new Set<string>(['lzstring-decompress']);
 
 const asUtf8 = (text: string): string => bytesToLatin1(toBytes(text));
 
+function fitsInBytes(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) > 0xff) return false;
+  }
+  return true;
+}
+
+/*
+ * Input that is not UTF-8 (a binary layer, or Latin-1 text) reaches the
+ * operation as its bytes, so it has to leave as its bytes. Encoding it as
+ * UTF-8 on the way out turns every byte above 0x7f into two: invisible on
+ * screen, and fatal to whatever decodes it next.
+ */
 function asTextOperation(op: Operation): Operation {
   const decodeInput = READS_TEXT.has(op.id) || READS_TEXT_ONLY.has(op.id);
   const encodeOutput = READS_TEXT.has(op.id) || WRITES_TEXT_ONLY.has(op.id);
@@ -126,9 +149,12 @@ function asTextOperation(op: Operation): Operation {
   return {
     ...op,
     run: (input, args) => {
-      const out = run(decodeInput ? renderText(input) : input, args);
+      const text = decodeInput ? tryDecodeUtf8(asBytes(input)) : null;
+      const out = run(text ?? input, args);
       if (!encodeOutput) return out;
-      return typeof out === 'string' ? asUtf8(out) : out.then(asUtf8);
+      const encode = (value: string): string =>
+        decodeInput && text === null && fitsInBytes(value) ? value : asUtf8(value);
+      return typeof out === 'string' ? encode(out) : out.then(encode);
     },
   };
 }

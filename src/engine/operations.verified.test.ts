@@ -364,6 +364,48 @@ describe('operations that work on text read UTF-8 input as text', () => {
     expect(await text('pässwörd', 'nt-hash')).toBe(await op!.run('pässwörd', op!.args));
   });
 
+  it('searching and filtering match what was typed, not its UTF-8 bytes', async () => {
+    expect(await text('درود بر تو', ['find-replace', { Find: 'درود', Replace: 'سلام' }])).toBe(
+      'سلام بر تو',
+    );
+    expect(
+      await text('درود بر تو', ['find-replace', { Find: 'درود', Replace: 'سلام', Type: 'Simple string' }]),
+    ).toBe('سلام بر تو');
+    expect(await text('درود\nروز خوش\nبدرود', ['filter-lines', { Pattern: '^درود$' }])).toBe('درود');
+    expect(await text('روز خوش، روز', ['count-occurrences', { Search: 'روز' }])).toBe('2');
+    expect(await text('خط اول درود\nخط دوم', ['regular-expression', { Pattern: 'درود' }])).toBe(
+      'درود',
+    );
+    const ranked = await text('روز خوش\nدرود\nبدرود', ['fuzzy-match', { Search: 'درود' }]);
+    expect(ranked.split('\n')[0]).toContain('درود');
+  });
+
+  it('wrapping and edit distance count characters, not bytes', async () => {
+    const wrapped = await text('درود، جهان زیباست', ['wrap-lines', { Width: 8 }]);
+    expect(wrapped.split('\n').every((line) => [...line].length <= 8)).toBe(true);
+    expect(wrapped.replace(/\n/g, '')).toBe('درود، جهان زیباست');
+    expect(await text('café\ncafe', 'levenshtein-distance')).toBe('1');
+  });
+
+  it('identifier conventions keep letters beyond ASCII', async () => {
+    expect(await text('café au lait', 'to-kebab-case')).toBe('café-au-lait');
+    expect(await text('café au lait', 'to-snake-case')).toBe('café_au_lait');
+    expect(await text('café au lait', 'to-camel-case')).toBe('caféAuLait');
+    expect(await text('ÉtéChaud', 'to-kebab-case')).toBe('été-chaud');
+    expect(await text('درود بر تو', 'to-snake-case')).toBe('درود_بر_تو');
+    expect(await text('می\u200cخواهم بروم', 'to-kebab-case')).toBe('می\u200cخواهم-بروم');
+    expect(
+      await text('const caféAuLait = 1', ['to-snake-case', { 'Attempt to be context aware': true }]),
+    ).toBe('const café_au_lait = 1');
+  });
+
+  it('text operations hand back bytes that are not UTF-8 exactly as they came', async () => {
+    const find = ['find-replace', { Find: 'A', Replace: 'B', Type: 'Simple string' }] as Entry;
+    expect(toHex(await bytesOut(fromHex('41ff008041e9'), find))).toBe('42ff008042e9');
+    expect(toHex(await bytesOut(fromHex('41ff0080'), 'reverse'))).toBe('8000ff41');
+    expect(toHex(await bytesOut(fromHex('41ff0a42'), ['filter-lines', { Pattern: 'A' }]))).toBe('41ff');
+  });
+
   it('no text operation turns non-ASCII input into invalid UTF-8', async () => {
     const sample = encodeInput('Café Grüße ÉTÉ naïve Ωμέγα', 'UTF-8');
     const broken: string[] = [];
