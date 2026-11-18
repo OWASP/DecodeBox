@@ -1,18 +1,44 @@
 import { OperationError } from '../types';
 import { arg, type Operation } from './types';
 
+const IPV4_MAX = 0xffffffff;
+
 function parseIPv4(text: string): number {
   const parts = text.trim().split('.');
   if (parts.length !== 4) throw new OperationError(`'${text}' is not an IPv4 address.`);
   let value = 0;
   for (const part of parts) {
+    if (!/^\d+$/.test(part)) {
+      throw new OperationError(`'${text}' has an octet that is not a decimal number.`);
+    }
     const octet = Number(part);
-    if (!Number.isInteger(octet) || octet < 0 || octet > 255) {
+    if (octet > 255) {
       throw new OperationError(`'${text}' has an octet outside 0-255.`);
     }
     value = value * 256 + octet;
   }
   return value >>> 0;
+}
+
+// Reads any of the four forms this module writes: dotted decimal, plain decimal,
+// `0x` hex and leading-zero octal. The whole-value forms are range checked rather
+// than truncated, so a value above 255.255.255.255 is an error instead of that
+// value modulo 2**32.
+function parseIPv4Any(text: string): number {
+  const forms: Array<[RegExp, number]> = [
+    [/^0[xX][0-9a-fA-F]+$/, 16],
+    [/^0[0-7]+$/, 8],
+    [/^\d+$/, 10],
+  ];
+
+  for (const [pattern, radix] of forms) {
+    if (!pattern.test(text)) continue;
+    const value = radix === 16 ? parseInt(text.slice(2), 16) : parseInt(text, radix);
+    if (value > IPV4_MAX) throw new OperationError(`'${text}' is above the largest IPv4 address.`);
+    return value >>> 0;
+  }
+
+  return parseIPv4(text);
 }
 
 function formatIPv4(value: number): string {
@@ -290,7 +316,7 @@ export const networkOperations: Operation[] = [
     ],
     run: (input, args) => {
       const text = input.trim();
-      const value = /^\d+$/.test(text) ? Number(text) >>> 0 : parseIPv4(text);
+      const value = parseIPv4Any(text);
 
       switch (String(arg(args, 'To', 'Decimal'))) {
         case 'Hexadecimal':
