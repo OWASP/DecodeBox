@@ -8,6 +8,7 @@ import { cx } from '../ui/helpers';
 import { ConfidenceMeter } from '../ui/ConfidenceMeter';
 import { LayerChain } from '../result/LayerChain';
 import { WhyPanel } from '../result/WhyPanel';
+import { AlternativeInterpretations } from './AlternativeInterpretations';
 
 
 function Headline({ runs, ending }: { runs: ChainRun[]; ending: string | null }) {
@@ -168,6 +169,7 @@ export function DetectionStrip() {
   const evidenceLayer = decoded[decoded.length - 1];
   const terminus = chain[chain.length - 1]?.terminus;
   const embedded = root?.embedded ?? [];
+  const hasAlternatives = chain.some((layer) => (layer.alternatives?.length ?? 0) > 0);
 
   if (analysing && decoded.length === 0) {
     return (
@@ -182,7 +184,7 @@ export function DetectionStrip() {
   }
 
   if (!root || dismissed) return null;
-  if (decoded.length === 0 && embedded.length === 0) return null;
+  if (decoded.length === 0 && embedded.length === 0 && !hasAlternatives) return null;
 
   const runs = summariseChain(root);
   const summary = explain(root, analysis);
@@ -317,6 +319,8 @@ export function DetectionStrip() {
       )}
 
       {embedded.length > 0 && <Embedded finds={embedded} />}
+
+      {hasAlternatives && <AlternativeInterpretations layers={chain} disabled={analysing} />}
 
       {incomplete && terminus && <Incomplete note={terminus.note} reason={terminus.reason} />}
 
