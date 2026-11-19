@@ -187,70 +187,79 @@ export function OutputPane() {
         </>
       }
     >
-      <HashBand />
-      <DetectionStrip />
+      <div
+        role="region"
+        aria-label={t.output.content}
+        tabIndex={0}
+        className="min-h-0 min-w-0 flex-1 overflow-auto"
+      >
+        <div className="flex min-h-full min-w-0 flex-col">
+          <HashBand />
+          <DetectionStrip />
 
-      {output.length > 0 && !isImage && (
-        <div
-          role="tablist"
-          aria-label={t.output.views}
-          className="flex shrink-0 items-center gap-0.5 border-b border-line bg-surface px-2 py-1"
-        >
-          {(['raw', 'hexdump'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              role="tab"
-              aria-selected={view === mode}
-              onClick={() => setView(mode)}
-              className={cx(
-                'rounded-sm px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors',
-                view === mode
-                  ? 'bg-accent-soft text-text'
-                  : 'text-faint hover:bg-surface-3 hover:text-muted',
-              )}
-              style={view === mode ? { color: 'var(--accent-text)' } : undefined}
+          {output.length > 0 && !isImage && (
+            <div
+              role="tablist"
+              aria-label={t.output.views}
+              className="flex shrink-0 items-center gap-0.5 border-b border-line bg-surface px-2 py-1"
             >
-              {t.output.viewNames[mode]}
-            </button>
-          ))}
+              {(['raw', 'hexdump'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === mode}
+                  onClick={() => setView(mode)}
+                  className={cx(
+                    'rounded-sm px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider transition-colors',
+                    view === mode
+                      ? 'bg-accent-soft text-text'
+                      : 'text-faint hover:bg-surface-3 hover:text-muted',
+                  )}
+                  style={view === mode ? { color: 'var(--accent-text)' } : undefined}
+                >
+                  {t.output.viewNames[mode]}
+                </button>
+              ))}
 
-          {view !== 'raw' && (
-            <span className="ms-2 font-mono text-[10px] text-faint">{t.output.viewNote}</span>
+              {view !== 'raw' && (
+                <span className="ms-2 font-mono text-[10px] text-faint">{t.output.viewNote}</span>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {result?.error && (
-        <div
-          className="shrink-0 border-b border-line px-3 py-2 font-mono text-micro"
-          style={{ color: 'var(--red)' }}
-        >
-          {t.recipe.stepFailed(result.error.stepIndex + 1)}: {result.error.message}
-        </div>
-      )}
+          {result?.error && (
+            <div
+              className="shrink-0 border-b border-line px-3 py-2 font-mono text-micro"
+              style={{ color: 'var(--red)' }}
+            >
+              {t.recipe.stepFailed(result.error.stepIndex + 1)}: {result.error.message}
+            </div>
+          )}
 
-      <div className="min-h-0 w-full min-w-0 flex-1 overflow-auto bg-surface">
-        {output.length === 0 ? <Watermark /> : isImage ? (
-          <div className="flex min-h-full flex-col items-center justify-center gap-3 p-4">
-            <img
-              src={imageSource}
-              alt={t.output.imageAlt}
-              className="max-h-full max-w-full rounded-control border border-line object-contain"
-              style={{ imageRendering: 'auto' }}
-            />
-            <p className="font-mono text-micro text-faint">{t.output.imageNote}</p>
-          </div>
-        ) : (
-          <pre
-            className={cx(
-              'p-3 font-mono text-[0.9375rem] leading-[1.7] text-text',
-              view === 'raw' && wrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre',
+          <div className="w-full min-w-0 flex-1 bg-surface">
+            {output.length === 0 ? <Watermark /> : isImage ? (
+              <div className="flex min-h-full flex-col items-center justify-center gap-3 p-4">
+                <img
+                  src={imageSource}
+                  alt={t.output.imageAlt}
+                  className="max-h-full max-w-full rounded-control border border-line object-contain"
+                  style={{ imageRendering: 'auto' }}
+                />
+                <p className="font-mono text-micro text-faint">{t.output.imageNote}</p>
+              </div>
+            ) : (
+              <pre
+                className={cx(
+                  'p-3 font-mono text-[0.9375rem] leading-[1.7] text-text',
+                  view === 'raw' && wrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre',
+                )}
+              >
+                {view === 'raw' ? json ? <JsonView source={pretty} /> : pretty : shownAs}
+              </pre>
             )}
-          >
-            {view === 'raw' ? json ? <JsonView source={pretty} /> : pretty : shownAs}
-          </pre>
-        )}
+          </div>
+        </div>
       </div>
     </Pane>
   );

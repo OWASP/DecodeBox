@@ -108,6 +108,8 @@ export interface Layer {
   terminus?: Terminus;
   /** Encoded data found inside this layer rather than wrapped around it. */
   embedded?: EmbeddedFind[];
+  /** Other interpretations of this layer; actionable steps start at the original input. */
+  alternatives?: Candidate[];
 }
 
 export type OutputType = 'text' | 'json' | 'bytes' | 'image';

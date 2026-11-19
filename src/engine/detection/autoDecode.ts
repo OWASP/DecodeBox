@@ -5,6 +5,7 @@ import { detect } from './detect';
 import { findEmbedded } from './embedded';
 import { terminalIdentification } from './identify';
 import { SHORTEST_ORDINARY } from './short';
+import { ipv4Alternatives } from './ipv4';
 
 export interface AutoDecodeOptions {
   maxDepth: number;
@@ -181,6 +182,8 @@ export async function autoDecode(
       detected && detected.confidence >= opts.threshold
         ? detected
         : await continuation(current, chain[chain.length - 1], node.format, seen, depth);
+    const alternatives = ipv4Alternatives(current, candidates, best, chain, opts.threshold);
+    if (alternatives.length > 0) node.alternatives = alternatives;
     if (!best) {
       node.terminus = settle(current, chain[chain.length - 1]);
       return root;

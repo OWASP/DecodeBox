@@ -154,6 +154,7 @@ export const t = {
 
   output: {
     title: 'Output',
+    content: 'Output content',
     views: 'How to read the output',
     viewNames: { raw: 'Raw', hexdump: 'Hexdump' },
     viewNote: 'a view, not a recipe step',
@@ -201,6 +202,10 @@ export const t = {
       `${format}, ${length} characters at offset ${offset}`,
     embeddedApply: 'Use as recipe',
     embeddedApplyHint: 'Cut that run out of the input and decode it, as editable steps',
+    alternativesTitle: 'Other possible interpretations',
+    alternativesHint: 'Numeric values can have several meanings. Compare the previews and evidence before choosing a recipe.',
+    useAlternative: (format: string) => `Use ${format} as recipe`,
+    alternativeLayer: (depth: number, format: string) => `At layer ${depth}, after ${format}`,
   },
 
   confidence: {

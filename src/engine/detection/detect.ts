@@ -5,6 +5,7 @@ import { utf16leRatio } from '../operations/dataFormat';
 import { bruteForce } from './bruteForce';
 import { shortCandidates } from './short';
 import { stepFor } from './steps';
+import { ipv4Candidates } from './ipv4';
 import type { Operation } from '../operations/types';
 import {
   asBytes,
@@ -319,6 +320,7 @@ export async function detect(input: string): Promise<Candidate[]> {
     });
   }
 
+  candidates.push(...ipv4Candidates(input));
   candidates.sort((a, b) => b.confidence - a.confidence);
 
   if ((candidates[0]?.confidence ?? 0) < 0.55) {
