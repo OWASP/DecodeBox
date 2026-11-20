@@ -483,3 +483,6 @@ else's
 else’s
 CORS
 inlined
+Changelog
+README
+dependabot
