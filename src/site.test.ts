@@ -7,8 +7,8 @@ const notFound = readFileSync('public/404.html', 'utf8');
 describe('the 404 page', () => {
   /*
    * GitHub Pages serves this one file for every missing path, at any depth,
-   * so a link to "/" or "./" lands somewhere else on owasp.github.io. Every
-   * link it has must name the site itself, which package.json records.
+   * so absolute URLs keep navigation and the icon anchored to the official
+   * site, which package.json records, even when the missing path is nested.
    */
   it('links only to the site, wherever on it the missing page was', () => {
     const links = [...notFound.matchAll(/(?:href|src)="([^"]+)"/g)].map((match) => match[1] ?? '');

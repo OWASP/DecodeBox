@@ -195,8 +195,8 @@ export default defineConfig(({ mode }) => {
       __BUILD_TIME__: JSON.stringify(new Date().toISOString().replace(/\.\d+Z$/, 'Z')),
     },
 
-    // Relative asset paths, so the same build works on the project page
-    // (owasp.github.io/DecodeBox) and on a custom domain.
+    // Relative asset paths, so the same build works under a project subpath
+    // and at the root of a custom domain.
     base: './',
 
     build: {
