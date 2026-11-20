@@ -54,7 +54,7 @@ Thanks to everyone who contributed to this release:
 
 - [@m4sh-wacker](https://github.com/m4sh-wacker)
 - [@arpitjain099](https://github.com/arpitjain099)
-- [@dependabot[bot]](https://github.com/apps/dependabot)
+- [Dependabot Bot](https://github.com/apps/dependabot)
 
 ---
 
