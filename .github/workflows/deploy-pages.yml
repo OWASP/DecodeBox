@@ -66,8 +66,8 @@ jobs:
         run: npm run build
 
       # The build ships no CNAME, so no repository claims a domain it does not
-      # control. The site serves from its github.io URL, which works because
-      # the build uses relative asset paths.
+      # control. Relative asset paths support both the configured custom domain
+      # and a github.io project URL when no custom domain is configured.
       #
       # On a branch-served site the CNAME file *is* the custom domain setting,
       # and this branch is force-pushed. A repository that has a domain

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "An encoding and decoding workbench that identifies unknown data and explains why.",
-  "homepage": "https://owasp.github.io/DecodeBox/",
+  "homepage": "https://decodebox.owasp.org/",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

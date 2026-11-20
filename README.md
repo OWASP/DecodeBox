@@ -2,7 +2,7 @@
 
 [![OWASP Project: Incubator](https://img.shields.io/badge/OWASP_Project-Incubator-blue.svg)](https://owasp.org/projects/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Live Site](https://img.shields.io/badge/demo-owasp.github.io%2FDecodeBox-orange.svg)](https://owasp.github.io/DecodeBox/)
+[![Live Site](https://img.shields.io/badge/demo-decodebox.owasp.org-orange.svg)](https://decodebox.owasp.org/)
 [![Client-side](https://img.shields.io/badge/processing-100%25_local-green.svg)](#security--privacy)
 
 **Encode. Decode. Identify.**
@@ -21,7 +21,7 @@ payloads, and the analysis report is complete.
   round-trip or a published known-answer test — 1,167 tests in all.
 - **Interface:** Three modes — a workspace for transforming, a report for understanding, and a
   CTF mode for working out what to try next, deployed at
-  **[owasp.github.io/DecodeBox](https://owasp.github.io/DecodeBox/)**.
+  **[decodebox.owasp.org](https://decodebox.owasp.org/)**.
 
 Still ahead: the accessibility audit and the internationalisation pass. A disassembler and an OCR
 engine are deliberately out of scope — they are their own projects, not operations.
@@ -108,7 +108,7 @@ DecodeBox processes untrusted, deliberately malformed input by design.
 ```text
 DecodeBox/
 ├── .github/workflows/   # CI, CodeQL, SBOM, markdown quality, Pages deployment
-├── public/              # Bundled fonts, favicon, CNAME
+├── public/              # Bundled fonts, favicon, 404 page
 ├── src/
 │   ├── engine/          # The analysis engine — the only half that knows about data
 │   │   ├── index.ts     # THE SEAM — the only module the interface imports from
@@ -174,7 +174,7 @@ The site is live, so the most valuable thing you can do right now is **use it an
 it**. Contributions are welcome, particularly in these areas:
 
 - **Testing:** Paste real payloads at
-  [owasp.github.io/DecodeBox](https://owasp.github.io/DecodeBox/) and report anything it gets
+  [decodebox.owasp.org](https://decodebox.owasp.org/) and report anything it gets
   wrong — especially anything it gets wrong *confidently*.
 - **Operations:** New transformations. One self-contained module, one test file, no UI changes.
 - **Detection:** Better heuristics that explain their evidence. A confident wrong answer is worse
