@@ -115,6 +115,8 @@ export interface Layer {
 export type OutputType = 'text' | 'json' | 'bytes' | 'image';
 
 export interface BakeResult {
+  /** Unique operation IDs in order of their last successful execution. */
+  completedOperations: string[];
   output: string;
   outputType: OutputType;
   byteLength: number;

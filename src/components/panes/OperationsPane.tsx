@@ -154,7 +154,8 @@ export function OperationsPane() {
   const recent = useStore((s) => s.recent);
   const addStep = useStore((s) => s.addStep);
   const [query, setQuery] = useState('');
-  const [closed, setClosed] = useState<string[]>([]);
+  const expandedFolders = useStore((s) => s.expandedFolders);
+  const setFolderExpanded = useStore((s) => s.setFolderExpanded);
   const grouped = useMemo(() => {
     const q = query.trim();
     const matched = q
@@ -170,7 +171,6 @@ export function OperationsPane() {
     if (starred.length > 0) byCategory.set(FAVOURITES, starred);
 
     const lately = recent
-      .filter((id) => !favourites.includes(id))
       .map((id) => matched.find((op) => op.id === id))
       .filter((op): op is OperationDef => op !== undefined);
     if (lately.length > 0) byCategory.set(RECENT, lately);
@@ -195,7 +195,7 @@ export function OperationsPane() {
     return grouped.find(([name]) => !PERSONAL.includes(name))?.[1][0];
   }, [grouped, query]);
 
-  const total = grouped.reduce((n, [name, ops]) => n + (name === FAVOURITES ? 0 : ops.length), 0);
+  const total = grouped.reduce((n, [name, ops]) => n + (PERSONAL.includes(name) ? 0 : ops.length), 0);
   const searching = query.trim().length > 0;
 
   return (
@@ -269,16 +269,15 @@ export function OperationsPane() {
           </p>
         ) : (
           grouped.map(([name, ops]) => {
-            const open = searching || !closed.includes(name);
+            const showMatches = searching && !PERSONAL.includes(name);
+            const open = showMatches || expandedFolders[name] === true;
             return (
               <Fragment key={name}>
                 <CategoryFolder
                   name={name}
                   count={ops.length}
                   open={open}
-                  onToggle={() =>
-                    setClosed((c) => (c.includes(name) ? c.filter((n) => n !== name) : [...c, name]))
-                  }
+                  onToggle={() => setFolderExpanded(name, !open)}
                 />
                 {open && (
                   <ul>
