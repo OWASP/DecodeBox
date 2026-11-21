@@ -77,6 +77,11 @@ and [Code of Conduct](https://policy.owasp.org/operational/code-of-conduct).
 [format detection]: src/engine/detection/
 [recursive analysis]: src/engine/analysis/
 
+## Project Lead
+
 [Mohammad Hossein Sadeghian](https://github.com/m4sh-wacker) leads this
 [OWASP Incubator project](https://owasp.org/projects/decodebox).
+
+## License
+
 DecodeBox is licensed under the [Apache License 2.0](LICENSE).
