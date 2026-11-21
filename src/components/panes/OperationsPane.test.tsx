@@ -64,11 +64,11 @@ describe('operation folders', () => {
     expect(container.textContent).not.toMatch(/Favourites|Recent/);
   });
 
-  it('shows favourites above recent, even when the same operation belongs to both', async () => {
+  it('opens the first favourite and the first successful operation in separate folders', async () => {
     const store = await mount();
     click(folder('Data format'));
     click(container.querySelector<HTMLButtonElement>('[aria-label="Add To Base64 to favourites"]'));
-    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('false');
+    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('true');
     expect(folder('Recent')).toBeUndefined();
 
     const input = search('btoa');
@@ -81,11 +81,14 @@ describe('operation folders', () => {
     expect(folder('Recent')).toBeUndefined();
     await act(() => store.getState().runRecipe());
     expect(store.getState().bakeResult?.output).toBe('aGVsbG8=');
-    expect(folder('Recent')?.getAttribute('aria-expanded')).toBe('false');
+    expect(folder('Recent')?.getAttribute('aria-expanded')).toBe('true');
     expect(folders().slice(0, 2)).toEqual([folder('Favourites'), folder('Recent')]);
     expect(container.querySelector('h2')?.textContent).toBe(`Operations1 of ${store.getState().operations.length}`);
 
     search('');
+    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('true');
+    expect(folder('Recent')?.getAttribute('aria-expanded')).toBe('true');
+    expect(store.getState().expandedFolders).toEqual({ 'Data format': true });
     click(container.querySelector<HTMLButtonElement>('[aria-label="Remove To Base64 from favourites"]'));
     expect(folder('Favourites')).toBeUndefined();
     expect(folders()[0]).toBe(folder('Recent'));
@@ -99,13 +102,12 @@ describe('operation folders', () => {
     const store = await mount();
     click(folder('Favourites'));
     click(folder('Recent'));
-    click(folder('Recent'));
     click(folder('Hashing'));
     expect(folder('Data format')?.getAttribute('aria-expanded')).toBe('false');
     act(() => store.getState().toggleFavourite('to-hex'));
     expect(folder('Favourites')).toBeUndefined();
     act(() => store.getState().toggleFavourite('to-hex'));
-    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('true');
+    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('false');
     search('btoa');
     expect(folder('Data format')?.getAttribute('aria-expanded')).toBe('true');
     search('');
@@ -116,7 +118,7 @@ describe('operation folders', () => {
     expect(restored.getState().favourites).toEqual(['to-hex']);
     expect(restored.getState().recent).toEqual(['from-base64', 'to-hex']);
     expect(folder('Hashing')?.getAttribute('aria-expanded')).toBe('true');
-    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('true');
+    expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe('false');
     expect(folder('Recent')?.getAttribute('aria-expanded')).toBe('false');
     act(() => restored.setState({ recent: [] }));
     expect(folder('Recent')).toBeUndefined();
@@ -126,6 +128,22 @@ describe('operation folders', () => {
       await restored.getState().runRecipe();
     });
     expect(folder('Recent')?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it.each([
+    { Favourites: false, Recent: true },
+    { Favourites: true, Recent: false },
+  ])('restores saved Favourites=$Favourites and Recent=$Recent independently', async (saved) => {
+    localStorage.setItem('decodebox-expanded-folders', JSON.stringify(saved));
+    localStorage.setItem('decodebox-favourites', '["to-base64"]');
+    localStorage.setItem('decodebox-recent', '["to-base64"]');
+    await mount();
+    for (const query of ['', 'btoa']) {
+      search(query);
+      expect(folder('Favourites')?.getAttribute('aria-expanded')).toBe(String(saved.Favourites));
+      expect(folder('Recent')?.getAttribute('aria-expanded')).toBe(String(saved.Recent));
+    }
+    expect(localStorage.getItem('decodebox-expanded-folders')).toBe(JSON.stringify(saved));
   });
 
   it('shows Recent on the first successful auto-bake and leaves a saved collapsed choice intact', async () => {
