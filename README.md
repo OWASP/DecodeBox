@@ -5,8 +5,6 @@
 [![Live Site](https://img.shields.io/badge/demo-decodebox.owasp.org-orange.svg)](https://decodebox.owasp.org/)
 [![Client-side](https://img.shields.io/badge/processing-100%25_local-green.svg)](#security--privacy)
 
-**Encode. Decode. Identify.**
-
 <p align="center">
   <a href="#owasp-decodebox">README</a> ·
   <a href="#how-to-contribute">Contributing</a> ·
