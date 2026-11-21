@@ -9,190 +9,136 @@
 
 <https://github.com/user-attachments/assets/55300ac6-472c-4ad9-aa3e-17edf85ab166>
 
----
+## Overview
 
-### Project Status
+OWASP DecodeBox is a browser-based workbench for identifying unknown data and tracing how it was
+encoded. Paste text or open a file to inspect its layers, see the evidence for a format match,
+and turn the steps that reached a layer into an editable recipe.
 
-**Pre-release, and already usable.** The workbench runs, the detection engine unwraps layered
-payloads, and the analysis report is complete.
+[Live site](https://decodebox.owasp.org/) · [Source code](https://github.com/OWASP/DecodeBox)
 
-- **Engine:** 504 operations across data formats, ciphers, public-key cryptography, hashing,
-  compression, networking, forensics, multimedia and extractors. Every one is covered by a
-  round-trip or a published known-answer test — 1,167 tests in all.
-- **Interface:** Three modes — a workspace for transforming, a report for understanding, and a
-  CTF mode for working out what to try next, deployed at
-  **[decodebox.owasp.org](https://decodebox.owasp.org/)**.
+## Key Features
 
-Still ahead: the accessibility audit and the internationalisation pass. A disassembler and an OCR
-engine are deliberately out of scope — they are their own projects, not operations.
+- **Operations and recipes.** Chain any of the 504 registered operations to convert data formats,
+  unpack compressed data, compute hashes, or extract values from binary files. Reorder steps,
+  adjust their arguments, and save a recipe to use with another input.
+- **Detection and analysis.** Explore decoded layers in the Detection view. Each finding shows
+  the evidence that triggered its rule and the path to the matching layer. Indicators such as
+  URLs, IP addresses, and hashes retain their location in the tree.
+- **Capture the flag (CTF).** Use the Search view to look for a flag prefix or pattern across
+  layers. Ranked hints suggest transformations to try next, including shifts for classical
+  ciphers. Copy the analysis as a Markdown report to keep the findings and their evidence together.
 
-### About The Project
+## Quick Start
 
-The usual model for a tool like this assumes you already know what your data is: you pick the
-operations, you chain them, you iterate. That is fine when you recognise the format on sight, and
-useless when you do not — which is most of the time an analyst is looking at something new.
+To try a recipe on the live site, paste `data:text/plain;base64,aGVsbG8=` into the input,
+search for **From Data URI**, and add it to the recipe. The output is `hello`.
 
-DecodeBox starts from the other end. You paste, and it works out what it is holding: every layer
-unwrapped, every indicator extracted, every security finding explained, with the evidence for each
-claim visible rather than asserted.
+To run from source, use Node.js **22.12.0 or later**. The project pins Node.js 22 in
+`.nvmrc`, and CI tests on Node.js 22 and 24.
 
-Everything runs in your browser. No input, no recipe, and no file ever leaves your machine —
-there is no server to send it to.
-
-### Key Objectives
-
-- **Identify:** Name unknown data rather than requiring the user to name it first.
-- **Explain:** Show the measurement behind every claim, so a confidence score can be checked.
-- **Analyse:** Report what a payload *means* — indicators and security findings at every depth —
-  not only what its bytes say.
-- **Guarantee:** Keep the processing entirely client-side, and enforce that in the build rather
-  than promising it in a document.
-
-### See it in Action
-
-A real payload from the test suite: Base64 over Base64 over gzip over JSON, with a PowerShell
-loader in one field.
-
-```text
-Findings   4        Indicators 7        Layers 8        257 ms
-
-CRITICAL  Cloud or service credential            CWE-798
-          Input → Base64 → Base64 → gzip
-          AKIAIOSFODNN7EXAMPLE
-
-CRITICAL  PowerShell download-and-execute        CWE-94
-          Input → Base64 → Base64 → gzip → JSON → Base64 → UTF-16LE
-          IEX (New-Object Net.WebClient).DownloadString
+```sh
+git clone https://github.com/OWASP/DecodeBox.git
+cd DecodeBox
+npm ci
+npm run dev
 ```
 
-The second finding is six layers down, and the last hop came from a Base64 blob inside one JSON
-field. Nothing that greps the original blob sees it, and nothing that unwraps a single linear
-chain reaches it.
+Open the local address printed by Vite. Run `npm test -- --run` for a single test run or
+`npm run build` to type-check the project and generate the static site in `dist/`.
 
-### How It Works
+## Security & Privacy
 
-1. **Detect.** Candidate interpretations are scored from independent signals — Shannon entropy,
-   character set, length rules, magic bytes, and whether the decoded result is itself well-formed.
-   Each signal carries a human-readable justification, and the last one carries the most weight:
-   any long hex string is *shaped* like Base64, but only one reading decodes to something coherent.
-2. **Unwrap.** The best candidate is decoded and detection runs again on the result, building a
-   tree rather than a chain — including encoded regions buried *inside* structures. The recursion
-   is bounded on depth, node count and wall-clock time.
-3. **Terminate, and say why.** A chain ends on content, on a named one-way value
-   (`Base64 → Base64 → MD5`), on a remainder that cannot be decoded such as a JWT signature, or on
-   an honest admission that a limit was reached and there may be more underneath.
-4. **Scan.** Indicators and security findings are gathered from every node of the tree, each
-   reported with a CWE reference, the evidence, and the exact decode path that revealed it.
+DecodeBox processes input in the browser. Ordinary analysis sends no input to an application
+backend. The production Content Security Policy sets `connect-src 'none'`, blocking script
+connections such as requests through the Fetch API. The build hashes inline scripts and bundles
+its fonts.
 
-When nothing declared explains the input, DecodeBox tries every single-byte XOR key and every
-rotation and scores each result for readability — at a confidence that says plainly it was a
-search rather than a match.
+Saved recipes live in the browser's local storage. A share link encodes the recipe, including
+custom operation arguments, in the URL fragment after `#`. Input is excluded by default.
+If you select **Include the input as well**, anyone who receives the link can read the embedded
+input. Check both the input and the recipe arguments for sensitive values before sharing.
 
-### Security & Privacy
+Report vulnerabilities privately using the instructions in the [security policy](SECURITY.md).
 
-DecodeBox processes untrusted, deliberately malformed input by design.
+## Standalone Edition
 
-- **No backend.** There is nothing to breach, nothing to log, and nothing to subpoena.
-- **No network, enforced.** The build ships a Content Security Policy with `connect-src 'none'`
-  and `script-src 'self'` plus a hash for the one inline script. Fonts are bundled rather than
-  fetched, and the build **fails** if a CDN reference ever appears in the output.
-- **No dynamic evaluation.** `eval`, `new Function`, and any path that renders input as HTML are
-  forbidden by lint rules, not by convention.
+Select **Download DecodeBox** on the live site and save `decodebox.html`. Open it directly from
+disk to work offline. The file includes the interface, engine, styles, and fonts. A local build
+produces the same edition at `dist/decodebox.html`.
 
-`style-src` does allow `'unsafe-inline'`, because React writes inline `style` attributes;
-`script-src`, where the real risk lives, stays strict. To report a vulnerability, see
-[SECURITY.md](SECURITY.md) — please do not open a public issue for security reports.
+When opened from disk, the engine runs on the main thread, so large inputs can pause the
+interface. Download a fresh copy after a security fix. Standalone copies do not update themselves.
 
-### Repository Structure
+## How It Works
 
-```text
-DecodeBox/
-├── .github/workflows/   # CI, CodeQL, SBOM, markdown quality, Pages deployment
-├── public/              # Bundled fonts, favicon, 404 page
-├── src/
-│   ├── engine/          # The analysis engine — the only half that knows about data
-│   │   ├── index.ts     # THE SEAM — the only module the interface imports from
-│   │   ├── operations/  # One self-contained module per transformation
-│   │   ├── detection/   # Entropy, charset, magic bytes, structural validity
-│   │   ├── analysis/    # Recursive exploration, indicators, security findings
-│   │   ├── ctf/         # Flag search, cipher key recovery, ranked hints
-│   │   ├── core/        # Recipe executor, byte handling, ciphers, codecs
-│   │   └── worker/      # The engine off the main thread, past a size threshold
-│   ├── components/      # The interface: workspace, report, CTF mode
-│   ├── store/           # One zustand store
-│   ├── hooks/           # Interaction logic shared across components
-│   ├── lib/             # Share links, saved recipes, recipe text format
-│   ├── i18n/            # Every user-facing string
-│   └── styles/          # Design tokens and themes
-├── SECURITY.md
-└── LICENSE
-```
+1. **Identify candidate formats.** The engine checks signals such as character sets, file
+   signatures, and entropy. It tries candidate decoders and scores the result using evidence such
+   as a known file header or readable text. When format matches are weak, it can also try
+   single-byte XOR keys and letter rotations, scoring the results for readability.
+2. **Follow the layers.** The engine repeats detection on decoded output and explores embedded
+   values, such as an encoded field inside JSON. Depth, node, and time limits bound the search.
+   The decoding chain records why it stopped, including a repeated result or a one-way hash.
+3. **Inspect the evidence.** Analysis scans the resulting tree for indicators and security
+   findings. A credential-shaped string, for example, can trigger a rule on its format alone.
+   Use the matched text and its context to assess the finding.
 
-The interface reaches the engine through one narrow facade exposing seven functions —
-`listOperations`, `bake`, `detect`, `autoDecode`, `identify`, `analyse` and `hints`. Both halves
-can be developed, tested and replaced independently; the workspace was once rebuilt from scratch
-without the engine changing by a line. Adding an operation should never require touching the UI.
+## Project Status
 
-### Quick Start
+DecodeBox is an [OWASP Incubator project](https://owasp.org/projects/decodebox).
+The [release history](CHANGELOG.md) records the initial public release, version 0.1.0.
+The test suite contains 1,205 passing tests. An accessibility audit and broader language support
+remain open areas for contribution.
 
-Requires Node.js 22.12 or later. CI builds on 22 and 24; `.nvmrc` pins 22 for development.
+## Contributing
 
-```bash
-npm install
-npm run dev     # development server
-npm run test    # 1,167 tests
-npm run build   # static site in dist/
-```
+For a detection or decoding error, include a small, non-sensitive input, the steps you took,
+and the result you expected. Contributions to operations should include test vectors. Follow the
+[OWASP contributing guidelines](https://github.com/OWASP/.github/blob/master/CONTRIBUTING.md)
+and the [OWASP Code of Conduct](https://policy.owasp.org/operational/code-of-conduct).
 
-The build output is fully static — no runtime, no server, no environment variables. Any static
-host will serve it.
+## Architecture
 
-### One File, No Install
+<details>
+<summary>Source layout and engine interface</summary>
 
-There is a **Download DecodeBox** button in the header of the running application. It hands you
-`decodebox.html`: the whole thing in a single 1.2 MB file — the interface, all 504 operations, the
-fonts, the styles. Double-click it and it runs. No server, no npm, no network, nothing to install,
-which is the point on an air-gapped machine where getting a build toolchain in is harder than
-getting one file in.
+The React interface calls the TypeScript engine through its [public interface]. The operation
+registry supplies names, arguments, and descriptions to the UI. To trace a recipe, follow
+the call from the application store to the [recipe executor].
 
-`npm run build` produces it alongside the site, so any deployment serves it:
+- [Workflows] run CI, documentation checks, and deployment.
+- [Public assets] include fonts and icons.
+- [Application source]
+  - [Components] implement the workspace, detection, and CTF views.
+  - [Store] manages application state and recipe actions.
+  - [Library] handles share links and saved recipes.
+  - [Engine]
+    - [Operations] implement individual transformations.
+    - [Core] handles bytes and executes recipes.
+    - [Detection] identifies formats and follows decoding chains.
+    - [Analysis] explores embedded values and collects findings and indicators.
+    - [CTF] searches for flags and ranks hints.
+    - [Worker] runs larger jobs in the background.
 
-```text
-dist/index.html       the site
-dist/decodebox.html   the same build, in one file
-```
+</details>
 
-It has to be one file rather than a folder. A browser refuses to load an ES module from a
-`file://` URL — the origin is opaque, so the request fails its CORS check — which means the
-ordinary `dist/` folder opened from disk comes up blank. Everything inlined leaves no request to
-fail. The only thing given up is the Web Worker, which needs a second file by definition, so a
-standalone build stays on the main thread for very large inputs and is identical otherwise.
+[public interface]: src/engine/index.ts
+[recipe executor]: src/engine/core/bake.ts
+[Workflows]: .github/workflows/
+[Public assets]: public/
+[Application source]: src/
+[Components]: src/components/
+[Store]: src/store/
+[Library]: src/lib/
+[Engine]: src/engine/
+[Operations]: src/engine/operations/
+[Core]: src/engine/core/
+[Detection]: src/engine/detection/
+[Analysis]: src/engine/analysis/
+[CTF]: src/engine/ctf/
+[Worker]: src/engine/worker/
 
-### How to Contribute
+## Project Lead and License
 
-The site is live, so the most valuable thing you can do right now is **use it and try to break
-it**. Contributions are welcome, particularly in these areas:
-
-- **Testing:** Paste real payloads at
-  [decodebox.owasp.org](https://decodebox.owasp.org/) and report anything it gets
-  wrong — especially anything it gets wrong *confidently*.
-- **Operations:** New transformations. One self-contained module, one test file, no UI changes.
-- **Detection:** Better heuristics that explain their evidence. A confident wrong answer is worse
-  than no answer.
-- **Accessibility:** The WCAG 2.1 AA audit has not been done yet.
-
-Start with the
-[OWASP contributing guidelines](https://github.com/OWASP/.github/blob/master/CONTRIBUTING.md).
-All participants are expected to follow the
-[OWASP Code of Conduct](https://policy.owasp.org/operational/code-of-conduct).
-
-### Project Leader
-
-- [Mohammad Hossein Sadeghian](https://github.com/m4sh-wacker)
-
-### License
-
-Licensed under the [Apache License 2.0](LICENSE). An OWASP Foundation Incubator project,
-classified as a Tool.
-
----
+[Mohammad Hossein Sadeghian](https://github.com/m4sh-wacker) leads OWASP DecodeBox.
+The project is licensed under the [Apache License 2.0](LICENSE).
