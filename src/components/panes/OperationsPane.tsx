@@ -270,7 +270,7 @@ export function OperationsPane() {
         ) : (
           grouped.map(([name, ops]) => {
             const showMatches = searching && !PERSONAL.includes(name);
-            const open = showMatches || expandedFolders[name] === true;
+            const open = showMatches || (expandedFolders[name] ?? PERSONAL.includes(name));
             return (
               <Fragment key={name}>
                 <CategoryFolder
