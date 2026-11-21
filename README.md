@@ -79,8 +79,7 @@ and [Code of Conduct](https://policy.owasp.org/operational/code-of-conduct).
 
 ## Project Lead
 
-[Mohammad Hossein Sadeghian](https://github.com/m4sh-wacker) leads this
-[OWASP Incubator project](https://owasp.org/projects/decodebox).
+[Mohammad Hossein Sadeghian](https://github.com/m4sh-wacker)
 
 ## License
 
