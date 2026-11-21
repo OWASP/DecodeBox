@@ -1,5 +1,29 @@
 {
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/v17.3.0/schemas/config.json",
   "release-type": "node",
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "include-v-in-release-name": true,
+  "bump-minor-pre-major": true,
+  "pull-request-title-pattern": "chore(release): OWASP DecodeBox v${version}",
+  "pull-request-header": "Proposed changes for the next OWASP DecodeBox release.",
+  "pull-request-footer": "Merging this PR creates the GitHub Release and attaches the standalone HTML file.",
+  "changelog-sections": [
+    { "type": "feat", "section": "Added" },
+    { "type": "perf", "section": "Changed" },
+    { "type": "refactor", "section": "Changed" },
+    { "type": "fix", "section": "Fixed" },
+    { "type": "revert", "section": "Fixed" },
+    { "type": "security", "section": "Security" },
+    { "type": "deps", "section": "Maintenance" },
+    { "type": "maintenance", "section": "Maintenance" },
+    { "type": "docs", "section": "Documentation", "hidden": true },
+    { "type": "chore", "section": "Maintenance", "hidden": true },
+    { "type": "ci", "section": "Maintenance", "hidden": true },
+    { "type": "build", "section": "Maintenance", "hidden": true },
+    { "type": "test", "section": "Maintenance", "hidden": true },
+    { "type": "style", "section": "Maintenance", "hidden": true }
+  ],
   "packages": {
     ".": {}
   }

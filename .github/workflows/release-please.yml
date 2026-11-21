@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'From main, rebuild the HTML for an existing release (vX.Y.Z). Leave blank for Release Please.'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -15,17 +20,118 @@ concurrency:
 
 jobs:
   release-please:
-    name: Create or update release PR
+    name: Manage release and standalone HTML
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    env:
+      GH_REPO: ${{ github.repository }}
+    defaults:
+      run:
+        shell: bash
 
     permissions:
       contents: write
       pull-requests: write
 
     steps:
+      # The pinned action skips labeling new PRs, but requires its pending label
+      # to update an open PR or publish a merged one. Reconcile its own root PR.
+      - name: Recognize the pending Release Please PR
+        if: inputs.release_tag == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr=$(gh api --method GET "repos/$GH_REPO/pulls" -f base=main -f state=all \
+            -f "head=${GH_REPO%/*}:release-please--branches--main--components--owasp-decodebox" \
+            -f sort=created -f direction=desc -F per_page=1 --jq '
+              .[] | select(.user.login == "github-actions[bot]")
+              | select(.state == "open" or (.merged_at and (.title | startswith("chore(release): OWASP DecodeBox v"))))
+              | select(all(.labels[]; .name | startswith("autorelease:") | not))
+              | .number')
+          if [[ -n "$pr" ]]; then
+            gh api --method POST "repos/$GH_REPO/issues/$pr/labels" -F 'labels[]=autorelease: pending' |
+              jq -e 'any(.[]; .name == "autorelease: pending")'
+          fi
+
       - name: Run Release Please
+        id: release
+        if: inputs.release_tag == ''
         uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           skip-labeling: true
+
+      - name: Verify the target release
+        id: target
+        if: steps.release.outputs.release_created == 'true' || inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name || inputs.release_tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ || "$RELEASE_TAG" == v0.1.0 ]]; then
+            echo "::error::Expected a stable vX.Y.Z tag other than the preserved first release."
+            exit 1
+          fi
+          if [[ -n "$RELEASE_VERSION" && "$RELEASE_TAG" != "v$RELEASE_VERSION" ]]; then
+            echo "::error::Release Please returned inconsistent tag and version outputs."
+            exit 1
+          fi
+          actual_tag=$(gh release view "$RELEASE_TAG" --json tagName --jq .tagName)
+          [[ "$actual_tag" == "$RELEASE_TAG" ]]
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the release tag
+        if: steps.target.outputs.tag != ''
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: refs/tags/${{ steps.target.outputs.tag }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        if: steps.target.outputs.tag != ''
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.5'
+          package-manager-cache: false
+
+      - name: Build the standalone edition
+        if: steps.target.outputs.tag != ''
+        run: |
+          npm clean-install
+          # Vite embeds the current time. Use the tagged commit time for repeatable HTML.
+          SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
+          export SOURCE_DATE_EPOCH
+          cat > "$RUNNER_TEMP/release-clock.cjs" <<'JS'
+          require('node:test').mock.timers.enable({
+            apis: ['Date'], now: Number(process.env.SOURCE_DATE_EPOCH) * 1000,
+          });
+          JS
+          NODE_OPTIONS="--require=$RUNNER_TEMP/release-clock.cjs" npm run build
+
+      - name: Verify and publish the standalone HTML
+        if: steps.target.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          if [[ ! -f dist/decodebox.html || ! -s dist/decodebox.html ]]; then
+            echo "::error::The standalone build produced no HTML file."
+            exit 1
+          fi
+          version=$(node -p "require('./package.json').version")
+          if [[ "$RELEASE_TAG" != "v$version" ]]; then
+            echo "::error::The package version does not match the release tag."
+            exit 1
+          fi
+          name="OWASP-DecodeBox-Standalone-$RELEASE_TAG.html"
+          ASSET_PATH="$RUNNER_TEMP/$name"
+          cp dist/decodebox.html "$ASSET_PATH"
+          digest="sha256:$(sha256sum "$ASSET_PATH" | cut -d' ' -f1)"
+          gh release upload "$RELEASE_TAG" "$ASSET_PATH" --clobber
+          gh release edit "$RELEASE_TAG" --title "OWASP DecodeBox $RELEASE_TAG"
+          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" | \
+            jq -e --arg tag "$RELEASE_TAG" --arg name "$name" --arg digest "$digest" '
+              .tag_name == $tag and .name == ("OWASP DecodeBox " + $tag) and
+              any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)'
