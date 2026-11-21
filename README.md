@@ -28,10 +28,7 @@ evidence you can inspect, and the steps that reach a layer can become an editabl
 - **Capture the flag (CTF).** Search decoded layers for flag patterns, review ranked hints for
   the next transformation, and copy the findings into a Markdown report.
 
-## Quick Start
-
-[Open DecodeBox](https://decodebox.owasp.org/), paste `data:text/plain;base64,aGVsbG8=` into
-the input, and add **From Data URI** to the recipe. The output is `hello`.
+## Development
 
 For local development, clone the [source repository](https://github.com/OWASP/DecodeBox)
 and run these commands from its root with Node.js **22.12.0 or later**.
@@ -44,7 +41,9 @@ npm run dev
 Run `npm test -- --run` to execute the 1,205 tests. Run `npm run build` to produce the static
 site and the standalone edition.
 
-**Offline use.** Select **Download DecodeBox** on the live site, or open the locally built
+## Standalone Edition
+
+Select **Download DecodeBox** on the live site, or open the locally built
 `dist/decodebox.html`. The file includes the engine, interface, and fonts. Large inputs can
 pause the tab because processing runs on the main thread. Download a new copy after security fixes.
 
