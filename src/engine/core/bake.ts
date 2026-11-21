@@ -92,6 +92,7 @@ function findMerge(steps: RecipeStep[], from: number): number {
 }
 
 interface Machine {
+  completed: Set<string>;
   registers: string[];
   jumps: Map<string, number>;
   deadline: number;
@@ -140,6 +141,7 @@ async function execute(
     }
 
     const absolute = offset + pc;
+    let completed = true;
 
     try {
       switch (step.opId) {
@@ -266,10 +268,16 @@ async function execute(
         }
       }
     } catch (error) {
+      completed = error instanceof ReturnSignal && step.opId === 'return';
       if (error instanceof ReturnSignal) throw error;
       machine.failedAt ??= absolute;
       machine.failure ??= error instanceof Error ? error.message : 'Operation failed.';
       throw error;
+    } finally {
+      if (completed) {
+        machine.completed.delete(step.opId);
+        machine.completed.add(step.opId);
+      }
     }
   }
 
@@ -279,6 +287,7 @@ async function execute(
 export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
   const started = performance.now();
   const machine: Machine = {
+    completed: new Set(),
     registers: [],
     jumps: new Map(),
     deadline: started + RECIPE_TIMEOUT_MS,
@@ -289,6 +298,7 @@ export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
   try {
     const output = await execute(recipe.steps, input, machine, 0);
     return {
+      completedOperations: [...machine.completed],
       output,
       outputType: classify(output),
       byteLength: byteLength(output),
@@ -297,6 +307,7 @@ export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
   } catch (error) {
     if (error instanceof ReturnSignal) {
       return {
+        completedOperations: [...machine.completed],
         output: error.value,
         outputType: classify(error.value),
         byteLength: byteLength(error.value),
@@ -305,6 +316,7 @@ export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
     }
 
     return {
+      completedOperations: [...machine.completed],
       output: '',
       outputType: 'text',
       byteLength: 0,

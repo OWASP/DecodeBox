@@ -45,6 +45,7 @@ interface State {
   operations: OperationDef[];
   favourites: string[];
   recent: string[];
+  expandedFolders: Record<string, boolean>;
   savedRecipes: SavedRecipe[];
 
   selectedStepUid: string | null;
@@ -104,6 +105,7 @@ interface State {
   rewrapBlockers: RewrapBlocker[] | null;
   dismissRewrapBlockers: () => void;
   toggleFavourite: (opId: string) => void;
+  setFolderExpanded: (name: string, open: boolean) => void;
 
   runRecipe: () => Promise<void>;
   stepOnce: () => Promise<void>;
@@ -143,6 +145,7 @@ const HEIGHTS_KEY = 'decodebox-pane-heights';
 const FAVOURITES_KEY = 'decodebox-favourites';
 const RECENT_KEY = 'decodebox-recent';
 const RECENT_LIMIT = 8;
+const EXPANDED_FOLDERS_KEY = 'decodebox-expanded-folders';
 const ENCODING_KEY = 'decodebox-input-encoding';
 const SEARCH_TERM_KEY = 'decodebox-search-term';
 
@@ -160,6 +163,15 @@ function write(key: string, value: unknown) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
   }
+}
+
+function recentAfterBake(previous: string[], result: BakeResult): string[] {
+  if (result.completedOperations.length === 0) return previous;
+  const newest = result.completedOperations.slice().reverse();
+  const recent = [...new Set([...newest, ...previous])].slice(0, RECENT_LIMIT);
+  if (recent.length === previous.length && recent.every((id, i) => id === previous[i])) return previous;
+  write(RECENT_KEY, recent);
+  return recent;
 }
 
 function readTheme(): Theme {
@@ -241,6 +253,7 @@ export const useStore = create<State>((set, get) => ({
   operations: [],
   favourites: read<string[]>(FAVOURITES_KEY, []),
   recent: read<string[]>(RECENT_KEY, []),
+  expandedFolders: read<Record<string, boolean>>(EXPANDED_FOLDERS_KEY, {}) ?? {},
   savedRecipes: loadRecipes(),
 
   selectedStepUid: null,
@@ -349,9 +362,6 @@ export const useStore = create<State>((set, get) => ({
     const op = get().operations.find((o) => o.id === opId);
     if (!op) return;
 
-    const recent = [opId, ...get().recent.filter((id) => id !== opId)].slice(0, RECENT_LIMIT);
-    set({ recent });
-    write(RECENT_KEY, recent);
     const steps = [...get().steps];
     const added = newStep(op);
     steps.splice(atIndex ?? steps.length, 0, added);
@@ -497,6 +507,12 @@ export const useStore = create<State>((set, get) => ({
     write(FAVOURITES_KEY, favourites);
   },
 
+  setFolderExpanded: (name, open) => {
+    const expandedFolders = { ...get().expandedFolders, [name]: open };
+    set({ expandedFolders });
+    write(EXPANDED_FOLDERS_KEY, expandedFolders);
+  },
+
   runRecipe: async () => {
     const { input, inputEncoding, steps, breakpoints } = get();
     if (steps.length === 0) {
@@ -516,7 +532,13 @@ export const useStore = create<State>((set, get) => ({
     });
     if (token !== bakeToken) return;
 
-    set({ bakeResult: result, baking: false, stale: false, pausedAt: stop === -1 ? null : stop });
+    set({
+      bakeResult: result,
+      recent: recentAfterBake(get().recent, result),
+      baking: false,
+      stale: false,
+      pausedAt: stop === -1 ? null : stop,
+    });
   },
 
   stepOnce: async () => {
@@ -535,6 +557,7 @@ export const useStore = create<State>((set, get) => ({
 
     set({
       bakeResult: result,
+      recent: recentAfterBake(get().recent, result),
       baking: false,
       stale: false,
       pausedAt: next >= steps.length ? null : next,
