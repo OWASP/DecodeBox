@@ -8,14 +8,24 @@ on:
     branches: [main]
     paths:
       - '**.md'
-      - '.markdownlint.yaml'
+      - '.markdownlint-cli2.yaml'
+      - '.github/scripts/**'
+      - '.github/actions/release-please-tools/**'
+      - '.github/workflows/docs-quality.yml'
+      - '.github/workflows/release-please.yml'
+      - 'release-please-config.json'
       - '.spellcheck.yaml'
       - '.wordlist.txt'
       - '.lycheeignore'
   pull_request:
     paths:
       - '**.md'
-      - '.markdownlint.yaml'
+      - '.markdownlint-cli2.yaml'
+      - '.github/scripts/**'
+      - '.github/actions/release-please-tools/**'
+      - '.github/workflows/docs-quality.yml'
+      - '.github/workflows/release-please.yml'
+      - 'release-please-config.json'
       - '.spellcheck.yaml'
       - '.wordlist.txt'
       - '.lycheeignore'
@@ -46,6 +56,22 @@ jobs:
             **/*.md
             #node_modules
             #dist
+
+      - name: Prepare the release generator
+        uses: ./.github/actions/release-please-tools
+
+      - name: Exercise the generator against merge history and successive releases
+        env:
+          NODE_PATH: ${{ runner.temp }}/release-please/node_modules
+        run: |
+          mkdir docs-fixture
+          cp .markdownlint-cli2.yaml docs-fixture/
+          node .github/scripts/verify-release-notes.cjs docs-fixture/CHANGELOG.md
+
+      - name: Lint the generated changelog with the project configuration
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: docs-fixture/CHANGELOG.md
 
   # Spelling and link rot are advisory rather than blocking. Both depend on
   # state outside the repository — a wordlist that has not settled yet, and
@@ -82,11 +108,29 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check a pending release comparison against its base commit
+        id: preview
+        if: >-
+          (github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+          github.event.before != '0000000000000000000000000000000000000000') ||
+          (github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'github-actions[bot]' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.head_ref == 'release-please--branches--main--components--owasp-decodebox')
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          python3 .github/scripts/pending-comparison.py "$BASE_SHA" > "$RUNNER_TEMP/lychee-preview.toml"
+          echo "args=--config $RUNNER_TEMP/lychee-preview.toml" >> "$GITHUB_OUTPUT"
 
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
           # Mail links are skipped by default; the old --exclude-mail spelling
           # was removed upstream and passing it aborts the run before it starts.
-          args: --no-progress --max-retries 3 './**/*.md'
+          args: >-
+            --no-progress --max-retries 4 --retry-wait-time 2 --max-concurrency 8
+            ${{ steps.preview.outputs.args }} './**/*.md'
           fail: true

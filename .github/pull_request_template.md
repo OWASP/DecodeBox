@@ -2,6 +2,9 @@
 
 <!-- Explain the reasoning, not just the diff. What problem does this solve? -->
 
+<!-- Maintainers: squash-merge using the Conventional Commit PR title. Preserve distinct changes
+and BREAKING CHANGE footers in the squash message. Release Please reads that message on main. -->
+
 ## Related issue
 
 <!-- Closes #123 — or "none" if this stands alone. -->
