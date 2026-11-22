@@ -64,14 +64,16 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/release-please/node_modules
         run: |
-          mkdir docs-fixture
+          mkdir -p docs-fixture/release
           cp .markdownlint-cli2.yaml docs-fixture/
-          node .github/scripts/verify-release-notes.cjs docs-fixture/CHANGELOG.md
+          cp .markdownlint-cli2.yaml docs-fixture/release/
+          # Published notes contain the same long commit citations as the changelog.
+          node .github/scripts/verify-release-notes.cjs docs-fixture/CHANGELOG.md docs-fixture/release/CHANGELOG.md
 
-      - name: Lint the generated changelog with the project configuration
+      - name: Lint the generated changelog and final release body
         uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
-          globs: docs-fixture/CHANGELOG.md
+          globs: docs-fixture/**/CHANGELOG.md
 
   # Spelling and link rot are advisory rather than blocking. Both depend on
   # state outside the repository — a wordlist that has not settled yet, and

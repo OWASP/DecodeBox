@@ -30,7 +30,29 @@ async function buildNotes(commits, options) {
     commitPartial: writerOpts.commitPartial.replace(/^\*/, '-')
       .replace('[{{shortHash}}]', '[`{{shortHash}}`]'),
   });
-  return renderer.buildNotes(uniqueNotes(commits), options);
+  const changes = uniqueNotes(commits);
+  const notes = await renderer.buildNotes(changes, options);
+  const repo = `${options.host || 'https://github.com'}/${options.owner}/${options.repository}`;
+  const mergedPRs = new Map(changes
+    .filter(({ pullRequest: pr }) => pr?.mergeCommitOid && pr.baseBranchName === 'main')
+    .map(commit => [commit.sha, commit.pullRequest.number]));
+
+  // Only annotate citations the renderer kept. A squash subject or issue footer
+  // can already contain a link to the same PR (GitHub also resolves /issues/N).
+  const numbers = new Set(mergedPRs.values());
+  const linked = new Set();
+  const withPRLinks = notes.replace(/\]\(([^\s)]+)\/(?:pull|issues)\/(\d+)\)/g, (link, host, id) => {
+    if (host !== repo || !numbers.has(Number(id))) return link;
+    linked.add(Number(id));
+    return `](${repo}/pull/${id})`;
+  });
+  return withPRLinks.replace(/\[`[0-9a-f]{7}`\]\(([^\s)]+)\/commit\/([0-9a-f]{40})\)/g,
+    (citation, host, sha) => {
+      const number = mergedPRs.get(sha);
+      if (host !== repo || !Number.isSafeInteger(number) || number <= 0 || linked.has(number)) return citation;
+      linked.add(number);
+      return `${citation}, [#${number}](${repo}/pull/${number})`;
+    });
 }
 
 async function updateReleasePR() {

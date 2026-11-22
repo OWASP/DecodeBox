@@ -81,8 +81,8 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag_name || inputs.release_tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ || "$RELEASE_TAG" == v0.1.0 ]]; then
-            echo "::error::Expected a stable vX.Y.Z tag other than the preserved first release."
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ || "$RELEASE_TAG" == v0.1.0 || "$RELEASE_TAG" == v0.1.1 ]]; then
+            echo "::error::Expected a stable vX.Y.Z tag after the two preserved releases."
             exit 1
           fi
           if [[ -n "$RELEASE_VERSION" && "$RELEASE_TAG" != "v$RELEASE_VERSION" ]]; then
@@ -144,11 +144,24 @@ jobs:
           cp dist/decodebox.html "$ASSET_PATH"
           digest="sha256:$(sha256sum "$ASSET_PATH" | cut -d' ' -f1)"
           gh release upload "$RELEASE_TAG" "$ASSET_PATH" --clobber
-          gh release edit "$RELEASE_TAG" --title "OWASP DecodeBox $RELEASE_TAG"
           gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" | \
             jq -e --arg tag "$RELEASE_TAG" --arg name "$name" --arg digest "$digest" '
-              .tag_name == $tag and .name == ("OWASP DecodeBox " + $tag) and
+              .tag_name == $tag and
               any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)'
+
+      # Finish a new description even if an asset needs a later manual rebuild.
+      - name: Format the newly created GitHub Release
+        if: >-
+          !cancelled() && inputs.release_tag == '' && steps.release.outputs.release_created == 'true' &&
+          steps.target.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          RECOVERY_TAG: ${{ inputs.release_tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+          RELEASE_ID: ${{ steps.release.outputs.id }}
+          ORIGINAL_NOTES: ${{ steps.release.outputs.body }}
+        run: node .github/scripts/publish-release-notes.cjs
 
       - name: Create or update the Release Please PR
         if: inputs.release_tag == ''
