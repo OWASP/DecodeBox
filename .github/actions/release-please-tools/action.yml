@@ -1,0 +1,28 @@
+name: Prepare Release Please
+description: Use the same pinned action and lockfile for release publication, PRs and tests.
+runs:
+  using: composite
+  steps:
+    # Dependabot maintains the action pin in the release workflow. Read its
+    # lockfile at that same revision so tests and production use the same writer.
+    - id: action
+      shell: bash
+      run: |
+        pin=$(sed -nE 's|^[[:space:]]*uses: googleapis/release-please-action@([a-f0-9]{40})([[:space:]].*)?$|\1|p' .github/workflows/release-please.yml)
+        [[ "$pin" =~ ^[a-f0-9]{40}$ ]]
+        echo "pin=$pin" >> "$GITHUB_OUTPUT"
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        repository: googleapis/release-please-action
+        ref: ${{ steps.action.outputs.pin }}
+        path: .release-please-tool
+        persist-credentials: false
+        sparse-checkout-cone-mode: false
+        sparse-checkout: |
+          /package.json
+          /package-lock.json
+    - shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/release-please"
+        cp .release-please-tool/package{,-lock}.json "$RUNNER_TEMP/release-please/"
+        npm ci --prefix "$RUNNER_TEMP/release-please" --omit=dev --ignore-scripts --no-audit --no-fund

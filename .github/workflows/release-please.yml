@@ -34,6 +34,16 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Check out release tooling
+        if: inputs.release_tag == ''
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Prepare the pinned Release Please library
+        if: inputs.release_tag == ''
+        uses: ./.github/actions/release-please-tools
+
       # The pinned action skips labeling new PRs, but requires its pending label
       # to update an open PR or publish a merged one. Reconcile its own root PR.
       - name: Recognize the pending Release Please PR
@@ -61,6 +71,7 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           skip-labeling: true
+          skip-github-pull-request: true
 
       - name: Verify the target release
         id: target
@@ -88,6 +99,7 @@ jobs:
         with:
           ref: refs/tags/${{ steps.target.outputs.tag }}
           persist-credentials: false
+          path: released-source
 
       - name: Set up Node.js
         if: steps.target.outputs.tag != ''
@@ -98,6 +110,7 @@ jobs:
 
       - name: Build the standalone edition
         if: steps.target.outputs.tag != ''
+        working-directory: released-source
         run: |
           npm clean-install
           # Vite embeds the current time. Use the tagged commit time for repeatable HTML.
@@ -112,6 +125,7 @@ jobs:
 
       - name: Verify and publish the standalone HTML
         if: steps.target.outputs.tag != ''
+        working-directory: released-source
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target.outputs.tag }}
@@ -135,3 +149,10 @@ jobs:
             jq -e --arg tag "$RELEASE_TAG" --arg name "$name" --arg digest "$digest" '
               .tag_name == $tag and .name == ("OWASP DecodeBox " + $tag) and
               any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)'
+
+      - name: Create or update the Release Please PR
+        if: inputs.release_tag == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NODE_PATH: ${{ runner.temp }}/release-please/node_modules
+        run: node .github/scripts/release-notes.cjs
