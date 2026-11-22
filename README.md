@@ -74,7 +74,7 @@ and [Code of Conduct](https://policy.owasp.org/operational/code-of-conduct).
 [format detection]: src/engine/detection/
 [recursive analysis]: src/engine/analysis/
 
-## Project Lead
+## Project Leader
 
 [Mohammad Hossein Sadeghian](https://github.com/m4sh-wacker)
 
