@@ -11,6 +11,11 @@ on:
         required: false
         type: string
 
+      repair_release_notes_tag:
+        description: 'From main, repair the notes of an existing release with a verified standalone asset.'
+        required: false
+        type: string
+
 permissions:
   contents: read
 
@@ -21,7 +26,7 @@ concurrency:
 jobs:
   release-please:
     name: Manage release and standalone HTML
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.release_tag == '' && inputs.repair_release_notes_tag == ''
     runs-on: ubuntu-24.04
     env:
       GH_REPO: ${{ github.repository }}
@@ -35,19 +40,16 @@ jobs:
 
     steps:
       - name: Check out release tooling
-        if: inputs.release_tag == ''
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
       - name: Prepare the pinned Release Please library
-        if: inputs.release_tag == ''
         uses: ./.github/actions/release-please-tools
 
       # The pinned action skips labeling new PRs, but requires its pending label
       # to update an open PR or publish a merged one. Reconcile its own root PR.
       - name: Recognize the pending Release Please PR
-        if: inputs.release_tag == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -65,7 +67,6 @@ jobs:
 
       - name: Run Release Please
         id: release
-        if: inputs.release_tag == ''
         uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         with:
           config-file: release-please-config.json
@@ -73,99 +74,69 @@ jobs:
           skip-labeling: true
           skip-github-pull-request: true
 
-      - name: Verify the target release
-        id: target
-        if: steps.release.outputs.release_created == 'true' || inputs.release_tag != ''
+      - name: Record the original release title and notes
+        id: baseline
+        if: steps.release.outputs.release_created == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag_name || inputs.release_tag }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ || "$RELEASE_TAG" == v0.1.0 || "$RELEASE_TAG" == v0.1.1 ]]; then
-            echo "::error::Expected a stable vX.Y.Z tag after the two preserved releases."
-            exit 1
-          fi
-          if [[ -n "$RELEASE_VERSION" && "$RELEASE_TAG" != "v$RELEASE_VERSION" ]]; then
-            echo "::error::Release Please returned inconsistent tag and version outputs."
-            exit 1
-          fi
-          actual_tag=$(gh release view "$RELEASE_TAG" --json tagName --jq .tagName)
-          [[ "$actual_tag" == "$RELEASE_TAG" ]]
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Check out the release tag
-        if: steps.target.outputs.tag != ''
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: refs/tags/${{ steps.target.outputs.tag }}
-          persist-credentials: false
-          path: released-source
-
-      - name: Set up Node.js
-        if: steps.target.outputs.tag != ''
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '22.23.5'
-          package-manager-cache: false
-
-      - name: Build the standalone edition
-        if: steps.target.outputs.tag != ''
-        working-directory: released-source
-        run: |
-          npm clean-install
-          # Vite embeds the current time. Use the tagged commit time for repeatable HTML.
-          SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
-          export SOURCE_DATE_EPOCH
-          cat > "$RUNNER_TEMP/release-clock.cjs" <<'JS'
-          require('node:test').mock.timers.enable({
-            apis: ['Date'], now: Number(process.env.SOURCE_DATE_EPOCH) * 1000,
-          });
-          JS
-          NODE_OPTIONS="--require=$RUNNER_TEMP/release-clock.cjs" npm run build
-
-      - name: Verify and publish the standalone HTML
-        if: steps.target.outputs.tag != ''
-        working-directory: released-source
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.target.outputs.tag }}
-        run: |
-          if [[ ! -f dist/decodebox.html || ! -s dist/decodebox.html ]]; then
-            echo "::error::The standalone build produced no HTML file."
-            exit 1
-          fi
-          version=$(node -p "require('./package.json').version")
-          if [[ "$RELEASE_TAG" != "v$version" ]]; then
-            echo "::error::The package version does not match the release tag."
-            exit 1
-          fi
-          name="OWASP-DecodeBox-Standalone-$RELEASE_TAG.html"
-          ASSET_PATH="$RUNNER_TEMP/$name"
-          cp dist/decodebox.html "$ASSET_PATH"
-          digest="sha256:$(sha256sum "$ASSET_PATH" | cut -d' ' -f1)"
-          gh release upload "$RELEASE_TAG" "$ASSET_PATH" --clobber
-          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" | \
-            jq -e --arg tag "$RELEASE_TAG" --arg name "$name" --arg digest "$digest" '
-              .tag_name == $tag and
-              any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)'
-
-      # Finish a new description even if an asset needs a later manual rebuild.
-      - name: Format the newly created GitHub Release
-        if: >-
-          !cancelled() && inputs.release_tag == '' && steps.release.outputs.release_created == 'true' &&
-          steps.target.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
-          RECOVERY_TAG: ${{ inputs.release_tag }}
           RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
           RELEASE_ID: ${{ steps.release.outputs.id }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          ORIGINAL_TITLE: ${{ steps.release.outputs.name }}
           ORIGINAL_NOTES: ${{ steps.release.outputs.body }}
-        run: node .github/scripts/publish-release-notes.cjs
+        run: node .github/scripts/publish-release-notes.cjs baseline
+
+      - name: Build, upload and verify the standalone HTML
+        id: standalone
+        if: success() && steps.baseline.outcome == 'success'
+        uses: ./.github/actions/standalone-release
+        with:
+          tag: ${{ steps.release.outputs.tag_name }}
+
+      - name: Format the newly created GitHub Release
+        if: >-
+          success() && steps.release.outputs.release_created == 'true' && steps.baseline.outcome == 'success' &&
+          steps.standalone.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+          RELEASE_ID: ${{ steps.release.outputs.id }}
+          VERIFIED_DIGEST: ${{ steps.standalone.outputs.digest }}
+        run: node .github/scripts/publish-release-notes.cjs format
 
       - name: Create or update the Release Please PR
-        if: inputs.release_tag == ''
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_PATH: ${{ runner.temp }}/release-please/node_modules
         run: node .github/scripts/release-notes.cjs
+
+  maintenance:
+    name: Repair a published release
+    if: github.ref == 'refs/heads/main' && (inputs.release_tag != '' || inputs.repair_release_notes_tag != '')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Reject conflicting repair requests
+        if: inputs.release_tag != '' && inputs.repair_release_notes_tag != ''
+        run: |
+          echo "::error::Choose either release_tag or repair_release_notes_tag, never both."
+          exit 1
+
+      - name: Check out release tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Rebuild the standalone HTML
+        if: inputs.release_tag != '' && inputs.repair_release_notes_tag == ''
+        uses: ./.github/actions/standalone-release
+        with:
+          tag: ${{ inputs.release_tag }}
+
+      - name: Recover release notes
+        if: inputs.repair_release_notes_tag != '' && inputs.release_tag == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.repair_release_notes_tag }}
+        run: node .github/scripts/publish-release-notes.cjs repair

@@ -11,6 +11,7 @@ on:
       - '.markdownlint-cli2.yaml'
       - '.github/scripts/**'
       - '.github/actions/release-please-tools/**'
+      - '.github/actions/standalone-release/**'
       - '.github/workflows/docs-quality.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
@@ -23,6 +24,7 @@ on:
       - '.markdownlint-cli2.yaml'
       - '.github/scripts/**'
       - '.github/actions/release-please-tools/**'
+      - '.github/actions/standalone-release/**'
       - '.github/workflows/docs-quality.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
@@ -69,6 +71,7 @@ jobs:
           cp .markdownlint-cli2.yaml docs-fixture/release/
           # Published notes contain the same long commit citations as the changelog.
           node .github/scripts/verify-release-notes.cjs docs-fixture/CHANGELOG.md docs-fixture/release/CHANGELOG.md
+          node --test .github/scripts/verify-release-cli.cjs
 
       - name: Lint the generated changelog and final release body
         uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0

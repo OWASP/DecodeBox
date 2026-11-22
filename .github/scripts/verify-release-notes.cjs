@@ -37,10 +37,15 @@ async function testPublication(options) {
   async function exercise(original, generated, settings = {}) {
     const { releaseData } = PullRequestBody.parse('Proposed release.\n\n---\n\n' + original + '\n\n---\n\nRelease footer.');
     const tag = 'v' + releaseData[0].version.toString();
-    const input = { repository, tag, id: '901', created: 'true', original: releaseData[0].notes, ...settings };
+    const digest = 'sha256:' + 'a'.repeat(64);
+    const input = { repository, tag, version: tag.slice(1), id: '901', title: tag,
+      original: releaseData[0].notes, digest, ...settings };
+    const release = { id: 901, tag_name: tag, name: tag, draft: false, published_at: '2026-11-20T01:00:00Z',
+      body: settings.liveBody ?? original, assets: [{ id: 22, name: 'OWASP-DecodeBox-Standalone-' + tag + '.html',
+        state: 'uploaded', size: 128, digest }] };
     const calls = [], warnings = [];
     let saved;
-    const body = await publishReleaseNotes(input, async (method, path, payload) => {
+    const api = async (method, path, payload) => {
       calls.push([method, path]);
       if (method === 'POST' && path === 'releases/generate-notes') {
         assert.deepEqual(payload, { previous_tag_name: 'v0.1.1', tag_name: tag });
@@ -55,12 +60,14 @@ async function testPublication(options) {
         return { number, merged_at: '2026-11-20', base: { ref: 'main', repo: { full_name: repository } }, user: { login } };
       }
       assert.equal(path, 'releases/901');
-      if (method === 'GET') return { tag_name: tag, body: settings.liveBody ?? original, draft: false };
+      if (method === 'GET') return { ...release };
       assert.equal(method, 'PATCH');
       saved = payload;
-      return { tag_name: tag, ...payload };
-    }, warning => warnings.push(warning));
-    if (body) assert.deepEqual(saved, { name: 'OWASP DecodeBox ' + tag, body });
+      return { ...Object.assign(release, payload) };
+    };
+    await publishReleaseNotes({ ...input, mode: 'baseline' }, api);
+    const body = await publishReleaseNotes({ ...input, mode: 'format' }, api, warning => warnings.push(warning));
+    assert.deepEqual(saved, { name: 'OWASP DecodeBox ' + tag, body });
     return { body, calls, warnings };
   }
   const full = await exercise(changes, native);
@@ -86,10 +93,8 @@ async function testPublication(options) {
     assert(result.body.includes('OWASP-DecodeBox-Standalone-v0.1.2.html'));
     if (typeof metadata !== 'string') assert(result.warnings.length);
   }
-  for (const settings of [{ created: 'false' }, { recoveryTag: 'v0.1.2' }, { tag: 'v0.1.0' }, { tag: 'v0.1.1' }]) {
-    assert.deepEqual((await exercise(fixes, native, settings)).calls, []);
-  }
-  await assert.rejects(exercise(fixes, nativeChanges, { liveBody: 'A maintainer edited these notes.' }), /Leaving it intact/);
+  for (const tag of ['v0.1.0', 'v0.1.1']) await assert.rejects(exercise(fixes, native, { tag }), /protected/);
+  await assert.rejects(exercise(fixes, nativeChanges, { liveBody: 'A maintainer edited these notes.' }), /creation response/);
   return full.body;
 }
 

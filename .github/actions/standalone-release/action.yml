@@ -1,0 +1,85 @@
+name: Publish the standalone release asset
+description: Build the exact tag and verify the uploaded HTML against its local SHA-256.
+inputs:
+  tag:
+    description: Published stable release tag to build.
+    required: true
+outputs:
+  digest:
+    description: Verified SHA-256 of the uploaded HTML.
+    value: ${{ steps.standalone.outputs.digest }}
+runs:
+  using: composite
+  steps:
+    - name: Verify the target release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ inputs.tag }}
+      run: |
+        if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ || "$RELEASE_TAG" == v0.1.0 || "$RELEASE_TAG" == v0.1.1 ]]; then
+          echo "::error::Expected a stable vX.Y.Z tag after the two preserved releases."
+          exit 1
+        fi
+        gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" |
+          jq -e --arg tag "$RELEASE_TAG" '
+            .tag_name == $tag and .draft == false and (.published_at | fromdateiso8601 | type == "number")'
+
+    - name: Check out the release tag
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        ref: refs/tags/${{ inputs.tag }}
+        persist-credentials: false
+        path: released-source
+
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '22.23.5'
+        package-manager-cache: false
+
+    - name: Build the standalone edition
+      id: build
+      shell: bash
+      working-directory: released-source
+      run: |
+        npm clean-install
+        # Vite embeds the current time. Use the tagged commit time for repeatable HTML.
+        SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
+        export SOURCE_DATE_EPOCH
+        cat > "$RUNNER_TEMP/release-clock.cjs" <<'JS'
+        require('node:test').mock.timers.enable({
+          apis: ['Date'], now: Number(process.env.SOURCE_DATE_EPOCH) * 1000,
+        });
+        JS
+        NODE_OPTIONS="--require=$RUNNER_TEMP/release-clock.cjs" npm run build
+
+    - name: Verify and publish the standalone HTML
+      id: standalone
+      if: success() && steps.build.outcome == 'success'
+      shell: bash
+      working-directory: released-source
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        RELEASE_TAG: ${{ inputs.tag }}
+      run: |
+        if [[ ! -f dist/decodebox.html || ! -s dist/decodebox.html ]]; then
+          echo "::error::The standalone build produced no HTML file."
+          exit 1
+        fi
+        version=$(node -p "require('./package.json').version")
+        if [[ "$RELEASE_TAG" != "v$version" ]]; then
+          echo "::error::The package version does not match the release tag."
+          exit 1
+        fi
+        name="OWASP-DecodeBox-Standalone-$RELEASE_TAG.html"
+        ASSET_PATH="$RUNNER_TEMP/$name"
+        cp dist/decodebox.html "$ASSET_PATH"
+        digest="sha256:$(sha256sum "$ASSET_PATH" | cut -d' ' -f1)"
+        gh release upload "$RELEASE_TAG" "$ASSET_PATH" --clobber
+        gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" | \
+          jq -e --arg tag "$RELEASE_TAG" --arg name "$name" --arg digest "$digest" '
+            .tag_name == $tag and
+            any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)'
+        echo "digest=$digest" >> "$GITHUB_OUTPUT"
