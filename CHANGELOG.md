@@ -5,6 +5,13 @@ All notable changes to OWASP DecodeBox are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.1](https://github.com/OWASP/DecodeBox/compare/v0.1.0...v0.1.1) (2026-11-22)
+
+### Fixed
+
+- auto-expand newly created favorites and recent sections ([`7805925`](https://github.com/OWASP/DecodeBox/commit/7805925b543158fe65e4d5486a8b12849bddf431))
+- improve sidebar quick-access defaults ([`25e50ae`](https://github.com/OWASP/DecodeBox/commit/25e50aee69509511979e2c53b622a6bb89bd0d29))
+
 ## [Unreleased]
 
 Changes planned for the next release will be documented here.
