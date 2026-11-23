@@ -1,6 +1,6 @@
 {
   "name": "owasp-decodebox",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "An encoding and decoding workbench that identifies unknown data and explains why.",
