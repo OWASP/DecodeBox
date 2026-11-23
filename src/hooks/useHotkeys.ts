@@ -17,6 +17,15 @@ function focusWhenReady(selector: string, attempts = 20) {
 
 export function useHotkeys() {
   useEffect(() => {
+    // A hotkey is ours once we act on it: suppress the browser default and stop
+    // it reaching other listeners. Running in the capture phase means this wins
+    // before a bubble-phase listener on a descendent (or the window itself) can
+    // claim the same chord — Cmd/Ctrl+K must not be stolen by the address bar.
+    const claim = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
     const handler = (event: KeyboardEvent) => {
       const state = useStore.getState();
       const mod = event.ctrlKey || event.metaKey;
@@ -24,15 +33,19 @@ export function useHotkeys() {
       if (event.key === 'Escape') {
         if (state.dialog !== null) return;
         if (state.whyOpen) {
+          claim(event);
           state.toggleWhy();
           return;
         }
-        if (state.outputMaximised) state.setOutputMaximised(false);
+        if (state.outputMaximised) {
+          claim(event);
+          state.setOutputMaximised(false);
+        }
         return;
       }
 
       if (event.altKey && !mod && event.key.toLowerCase() === 'c') {
-        event.preventDefault();
+        claim(event);
         copyOutput(state);
         return;
       }
@@ -41,35 +54,35 @@ export function useHotkeys() {
 
       switch (event.key.toLowerCase()) {
         case 'enter': {
-          event.preventDefault();
+          claim(event);
           void state.runRecipe();
           return;
         }
         case 'c': {
           if (!event.shiftKey) return;
-          event.preventDefault();
+          claim(event);
           copyOutput(state);
           return;
         }
         case 'b': {
-          event.preventDefault();
+          claim(event);
           state.setSidebarOpen(!state.sidebarOpen);
           return;
         }
         case 'k': {
-          event.preventDefault();
+          claim(event);
           state.setActivity('operations');
           state.setSidebarOpen(true);
           focusWhenReady('input[type="search"]');
           return;
         }
         case 's': {
-          event.preventDefault();
+          claim(event);
           state.setDialog('library');
           return;
         }
         case 'l': {
-          event.preventDefault();
+          claim(event);
           state.setDialog('share');
           return;
         }
@@ -78,8 +91,8 @@ export function useHotkeys() {
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handler, { capture: true });
+    return () => window.removeEventListener('keydown', handler, { capture: true });
   }, []);
 }
 
