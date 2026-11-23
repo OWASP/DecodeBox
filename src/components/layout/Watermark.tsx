@@ -1,11 +1,12 @@
 import { OwaspMark } from '../ui/OwaspMark';
 import { t } from '../../i18n/en';
+import { modShortcut, altKeyLabel } from '../ui/helpers';
 
 const KEYS: [string, string][] = [
-  [t.watermark.find, 'Ctrl K'],
-  [t.watermark.run, 'Ctrl ⏎'],
-  [t.watermark.copy, 'Alt C'],
-  [t.watermark.sidebar, 'Ctrl B'],
+  [t.watermark.find, modShortcut('K')],
+  [t.watermark.run, `${modShortcut('⏎')}`],
+  [t.watermark.copy, `${altKeyLabel()} C`],
+  [t.watermark.sidebar, modShortcut('B')],
 ];
 
 export function Watermark() {

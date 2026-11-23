@@ -3,7 +3,7 @@ import { GithubMark } from '../ui/GithubMark';
 import { OwaspMark } from '../ui/OwaspMark';
 import { useStore } from '../../store/useStore';
 import { t } from '../../i18n/en';
-import { cx } from '../ui/helpers';
+import { cx, modShortcut } from '../ui/helpers';
 
 
 
@@ -77,7 +77,7 @@ export function Header() {
           {steps.length === 0 ? t.header.commandEmpty : t.header.commandSteps(steps.length)}
         </span>
         <kbd className="ms-1 rounded-xs border border-line px-1 font-mono text-[10px] leading-[14px]">
-          {t.operations.shortcut}
+          {modShortcut('K')}
         </kbd>
       </button>
 

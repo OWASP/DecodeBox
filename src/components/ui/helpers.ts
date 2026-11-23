@@ -4,6 +4,27 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
+export function modShortcut(key: string): string {
+  const mac = /Mac|iPhone|iPad|iPod/.test(
+    (typeof navigator !== 'undefined' && (navigator.platform || navigator.userAgent)) || '',
+  );
+  return `${mac ? '⌘' : 'Ctrl'} ${key}`;
+}
+
+export function modKeyLabel(): string {
+  const mac = /Mac|iPhone|iPad|iPod/.test(
+    (typeof navigator !== 'undefined' && (navigator.platform || navigator.userAgent)) || '',
+  );
+  return mac ? '⌘' : 'Ctrl';
+}
+
+export function altKeyLabel(): string {
+  const mac = /Mac|iPhone|iPad|iPod/.test(
+    (typeof navigator !== 'undefined' && (navigator.platform || navigator.userAgent)) || '',
+  );
+  return mac ? 'Option' : 'Alt';
+}
+
 export function confidenceColor(confidence: number): string {
   if (confidence >= 0.9) return 'var(--green)';
   if (confidence >= 0.6) return 'var(--amber)';
