@@ -3,7 +3,7 @@ import { ChevronRight, FileCode2, Folder, FolderOpen, Search, Star, X } from 'lu
 import { useStore } from '../../store/useStore';
 import { CATEGORY_ORDER, type OperationDef } from '../../engine';
 import { t } from '../../i18n/en';
-import { cx } from '../ui/helpers';
+import { cx, modShortcut } from '../ui/helpers';
 
 const FAVOURITES = 'Favourites';
 const RECENT = 'Recent';
@@ -246,7 +246,7 @@ export function OperationsPane() {
               aria-hidden="true"
               className="pointer-events-none absolute inset-y-0 inset-e-1.5 my-auto flex h-[16px] items-center rounded-xs border border-line px-1 font-mono text-[10px] text-faint"
             >
-              {t.operations.shortcut}
+              {modShortcut('K')}
             </kbd>
           )}
         </div>

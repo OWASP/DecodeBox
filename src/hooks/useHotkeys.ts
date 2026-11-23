@@ -31,7 +31,7 @@ export function useHotkeys() {
         return;
       }
 
-      if (event.altKey && !mod && event.key.toLowerCase() === 'c') {
+      if (event.altKey && !mod && (event.key.toLowerCase() === 'c' || event.code === 'KeyC')) {
         event.preventDefault();
         copyOutput(state);
         return;
@@ -58,6 +58,7 @@ export function useHotkeys() {
         }
         case 'k': {
           event.preventDefault();
+          event.stopPropagation();
           state.setActivity('operations');
           state.setSidebarOpen(true);
           focusWhenReady('input[type="search"]');
@@ -78,8 +79,8 @@ export function useHotkeys() {
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
   }, []);
 }
 
