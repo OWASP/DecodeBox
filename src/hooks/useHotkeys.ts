@@ -58,7 +58,6 @@ export function useHotkeys() {
         }
         case 'k': {
           event.preventDefault();
-          event.stopPropagation();
           state.setActivity('operations');
           state.setSidebarOpen(true);
           focusWhenReady('input[type="search"]');

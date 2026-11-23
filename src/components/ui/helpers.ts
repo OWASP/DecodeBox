@@ -11,6 +11,13 @@ export function modShortcut(key: string): string {
   return `${mac ? '⌘' : 'Ctrl'} ${key}`;
 }
 
+export function modKeyLabel(): string {
+  const mac = /Mac|iPhone|iPad|iPod/.test(
+    (typeof navigator !== 'undefined' && (navigator.platform || navigator.userAgent)) || '',
+  );
+  return mac ? '⌘' : 'Ctrl';
+}
+
 export function altKeyLabel(): string {
   const mac = /Mac|iPhone|iPad|iPod/.test(
     (typeof navigator !== 'undefined' && (navigator.platform || navigator.userAgent)) || '',
