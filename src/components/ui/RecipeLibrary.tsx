@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Download, Trash2, Upload } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { t } from '../../i18n/en';
 import { Button, IconButton } from './primitives';
@@ -13,9 +13,13 @@ export function RecipeLibrary() {
   const saveCurrentRecipe = useStore((s) => s.saveCurrentRecipe);
   const loadSavedRecipe = useStore((s) => s.loadSavedRecipe);
   const removeSavedRecipe = useStore((s) => s.removeSavedRecipe);
+  const importRecipes = useStore((s) => s.importRecipes);
+  const exportRecipes = useStore((s) => s.exportRecipes);
   const setDialog = useStore((s) => s.setDialog);
 
   const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const describe = (opIds: string[]) =>
     opIds
@@ -30,6 +34,30 @@ export function RecipeLibrary() {
     if (toSave.length === 0) return;
     saveCurrentRecipe(name, toSave);
     setName('');
+  };
+
+  const onExport = () => {
+    const blob = new Blob([exportRecipes()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'decodebox-recipes.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onImport = async (file: File) => {
+    if (file.size > 1_000_000) {
+      setMessage('File is too large.');
+      return;
+    }
+    try {
+      const text = await file.text();
+      const result = importRecipes(text);
+      setMessage(result.error ?? `Imported ${result.imported}, skipped ${result.skipped}.`);
+    } catch {
+      setMessage('Could not read file.');
+    }
   };
 
   return (
@@ -64,6 +92,30 @@ export function RecipeLibrary() {
           {t.library.save}
         </Button>
       </form>
+
+      <div className="mt-3 flex gap-2">
+        <Button type="button" onClick={onExport} disabled={saved.length === 0}>
+          <Download size={12} aria-hidden="true" />
+          {t.library.exportRecipes}
+        </Button>
+        <Button type="button" onClick={() => fileInputRef.current?.click()}>
+          <Upload size={12} aria-hidden="true" />
+          {t.library.importRecipes}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void onImport(file);
+            e.target.value = '';
+          }}
+        />
+      </div>
+
+      {message && <p className="mt-2 text-micro text-faint">{message}</p>}
 
       {usingDetected && (
         <p className="mt-2 text-micro text-faint">

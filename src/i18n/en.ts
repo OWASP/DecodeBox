@@ -345,6 +345,8 @@ export const t = {
     saved: 'Saved',
     empty: 'Nothing saved yet.',
     remove: (name: string) => `Delete ${name}`,
+    exportRecipes: 'Export all',
+    importRecipes: 'Import',
     storageNote: 'Recipes live in this browser’s storage. Clearing site data removes them.',
   },
 

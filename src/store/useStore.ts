@@ -28,7 +28,10 @@ import {
   instantiate,
   loadRecipes,
   saveRecipe,
+  importRecipes as importRecipesLib,
+  exportRecipes as exportRecipesLib,
   type SavedRecipe,
+  type ImportResult,
 } from '../lib/recipes';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -127,6 +130,8 @@ interface State {
   saveCurrentRecipe: (name: string, steps?: RecipeStep[]) => void;
   loadSavedRecipe: (id: string) => void;
   removeSavedRecipe: (id: string) => void;
+  importRecipes: (raw: string) => ImportResult;
+  exportRecipes: () => string;
 
   setPaneWidth: (pane: 'operations' | 'recipe', width: number) => void;
   setPaneHeight: (pane: 'input' | 'recipe', height: number) => void;
@@ -715,6 +720,14 @@ export const useStore = create<State>((set, get) => ({
   removeSavedRecipe: (id) => {
     set({ savedRecipes: deleteRecipe(id) });
   },
+
+  importRecipes: (raw) => {
+    const result = importRecipesLib(raw);
+    if (!result.error) set({ savedRecipes: loadRecipes() });
+    return result;
+  },
+
+  exportRecipes: () => exportRecipesLib(get().savedRecipes),
 
   setPaneHeight: (pane, height) => {
     const paneHeights = { ...get().paneHeights, [pane]: height };
