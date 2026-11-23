@@ -5,6 +5,13 @@ All notable changes to OWASP DecodeBox are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.2](https://github.com/OWASP/DecodeBox/compare/v0.1.1...v0.1.2) (2026-11-23)
+
+### Fixed
+
+- make HelpDialog modifier labels platform-aware and drop stopPropagation ([`28cbd2e`](https://github.com/OWASP/DecodeBox/commit/28cbd2eb00f06ed6924619a9526953292f5b262c))
+- make keyboard shortcuts work and read correctly on macOS ([`89f72e8`](https://github.com/OWASP/DecodeBox/commit/89f72e8cc93422282b1ad9bc75e28a39ada52152))
+
 ## [0.1.1](https://github.com/OWASP/DecodeBox/compare/v0.1.0...v0.1.1) (2026-11-22)
 
 ### Fixed
