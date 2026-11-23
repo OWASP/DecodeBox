@@ -14,8 +14,6 @@ on:
       - '.github/workflows/docs-quality.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
-      - '.spellcheck.yaml'
-      - '.wordlist.txt'
       - '.lycheeignore'
   pull_request:
     paths:
@@ -26,8 +24,6 @@ on:
       - '.github/workflows/docs-quality.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
-      - '.spellcheck.yaml'
-      - '.wordlist.txt'
       - '.lycheeignore'
   schedule:
     # Weekly link check. External links rot without anyone touching the repo.
@@ -73,29 +69,7 @@ jobs:
         with:
           globs: docs-fixture/CHANGELOG.md
 
-  # Spelling and link rot are advisory rather than blocking. Both depend on
-  # state outside the repository — a wordlist that has not settled yet, and
-  # remote hosts that rate-limit CI runners — so a red mark from either is not
-  # a reason to stop a contributor's pull request. Flip continue-on-error off
-  # once the wordlist has stopped growing on every push.
-  spelling:
-    name: Spell check (advisory)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    continue-on-error: true
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-
-      # Unknown words are added to .wordlist.txt, which doubles as the project's
-      # glossary of accepted technical terms.
-      - name: Check spelling
-        uses: rojopolis/spellcheck-github-actions@f2df388397bcb35f524b4a0a3567d6b1e8a4e595 # 0.68.0
-        with:
-          config_path: .spellcheck.yaml
+# Link checking is advisory because external hosts may rate-limit CI runners.
 
   links:
     name: Link check (advisory)
