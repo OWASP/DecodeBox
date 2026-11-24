@@ -1,5 +1,7 @@
 import type { OperationArg, RecipeStep } from '../engine';
+import type { ArgType } from '../engine/types';
 import { randomId } from '../engine';
+import { getOperation } from '../engine/operations';
 import { safeArgValue } from './share';
 
 export interface SavedRecipe {
@@ -12,11 +14,21 @@ export interface SavedRecipe {
 const KEY = 'decodebox-recipes';
 const MAX = 100;
 
+const ARG_TYPES = new Set<ArgType>(['string', 'number', 'boolean', 'option', 'toggleString', 'textarea']);
+
+function fallbackFor(type: ArgType): string | number | boolean {
+  if (type === 'number') return 0;
+  if (type === 'boolean') return false;
+  return '';
+}
+
 function readArg(value: unknown): OperationArg | null {
   if (typeof value !== 'object' || value === null) return null;
   const arg = value as Partial<OperationArg>;
   if (typeof arg.name !== 'string' || typeof arg.type !== 'string') return null;
-  return { ...(arg as OperationArg), value: safeArgValue(arg.value, '') };
+  if (!ARG_TYPES.has(arg.type as ArgType)) return null;
+  const type = arg.type as ArgType;
+  return { name: arg.name, type, value: safeArgValue(arg.value, fallbackFor(type)) };
 }
 
 function readStep(value: unknown): RecipeStep | null {
@@ -24,11 +36,29 @@ function readStep(value: unknown): RecipeStep | null {
   const step = value as Partial<RecipeStep>;
   if (typeof step.opId !== 'string' || !Array.isArray(step.args)) return null;
 
-  const args: OperationArg[] = [];
-  for (const raw of step.args) {
-    const arg = readArg(raw);
-    if (!arg) return null;
-    args.push(arg);
+  const op = getOperation(step.opId);
+  const importedArgs = step.args;
+
+  let args: OperationArg[];
+  if (op) {
+    args = op.args.map((def) => {
+      const found = importedArgs.find(
+        (a) => typeof a === 'object' && a !== null && (a as Partial<OperationArg>).name === def.name,
+      ) as Partial<OperationArg> | undefined;
+      let value = found ? safeArgValue(found.value, def.value) : def.value;
+      if (def.type === 'option' && def.options && !def.options.includes(String(value))) value = def.value;
+      if (def.type === 'toggleString' && def.toggleValues && !def.toggleValues.includes(String(value))) value = def.value;
+      if (def.type === 'number' && typeof value !== 'number') value = def.value;
+      if (def.type === 'boolean' && typeof value !== 'boolean') value = def.value;
+      return { ...def, value };
+    });
+  } else {
+    args = [];
+    for (const raw of importedArgs) {
+      const arg = readArg(raw);
+      if (!arg) return null;
+      args.push(arg);
+    }
   }
 
   return {
@@ -96,16 +126,14 @@ export function importRecipes(raw: string): ImportResult {
     return { imported: 0, skipped: 0, error: 'Invalid JSON file.' };
   }
 
-  let list: unknown[] | null = null;
-  if (Array.isArray(parsed)) {
-    list = parsed;
-  } else if (parsed && typeof parsed === 'object') {
-    const obj = parsed as { version?: unknown; recipes?: unknown };
-    if (obj.version !== undefined && obj.version !== 1) {
-      return { imported: 0, skipped: 0, error: 'Unsupported export version.' };
-    }
-    if (Array.isArray(obj.recipes)) list = obj.recipes;
+  if (Array.isArray(parsed) || !parsed || typeof parsed !== 'object') {
+    return { imported: 0, skipped: 0, error: 'Expected a versioned recipe export.' };
   }
+  const obj = parsed as { version?: unknown; recipes?: unknown };
+  if (obj.version !== 1) {
+    return { imported: 0, skipped: 0, error: 'Unsupported export version.' };
+  }
+  const list = Array.isArray(obj.recipes) ? obj.recipes : null;
 
   if (!list) return { imported: 0, skipped: 0, error: 'Expected a recipe list.' };
   if (list.length > 1000) return { imported: 0, skipped: 0, error: 'Too many recipes in file.' };
