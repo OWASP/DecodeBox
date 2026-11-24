@@ -160,6 +160,16 @@ export function exportRecipes(recipes: SavedRecipe[] = loadRecipes()): string {
   return JSON.stringify({ version: 1, recipes }, null, 2);
 }
 
+export function normalizeRecipes(recipes: SavedRecipe[], operations: OperationDef[]): SavedRecipe[] {
+  const valid: SavedRecipe[] = [];
+  for (const recipe of recipes) {
+    const normalized = readRecipe(recipe, operations);
+    if (normalized) valid.push(normalized);
+  }
+  if (valid.length !== recipes.length) persist(valid);
+  return valid;
+}
+
 export function importRecipes(raw: string, operations: OperationDef[] = []): ImportResult {
   let parsed: unknown;
   try {

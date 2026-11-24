@@ -30,6 +30,7 @@ import {
   saveRecipe,
   importRecipes as importRecipesLib,
   exportRecipes as exportRecipesLib,
+  normalizeRecipes,
   type SavedRecipe,
   type ImportResult,
 } from '../lib/recipes';
@@ -130,7 +131,7 @@ interface State {
   saveCurrentRecipe: (name: string, steps?: RecipeStep[]) => void;
   loadSavedRecipe: (id: string) => void;
   removeSavedRecipe: (id: string) => void;
-  importRecipes: (raw: string) => ImportResult;
+  importRecipes: (raw: string, operations?: OperationDef[]) => ImportResult;
   exportRecipes: () => string;
 
   setPaneWidth: (pane: 'operations' | 'recipe', width: number) => void;
@@ -347,7 +348,9 @@ export const useStore = create<State>((set, get) => ({
 
   loadOperations: async () => {
     if (get().operations.length > 0) return;
-    set({ operations: await listOperations() });
+    const operations = await listOperations();
+    set({ operations });
+    set({ savedRecipes: normalizeRecipes(get().savedRecipes, operations) });
   },
 
   restoreFromUrl: async () => {
@@ -721,8 +724,8 @@ export const useStore = create<State>((set, get) => ({
     set({ savedRecipes: deleteRecipe(id) });
   },
 
-  importRecipes: (raw) => {
-    const result = importRecipesLib(raw);
+  importRecipes: (raw, operations) => {
+    const result = importRecipesLib(raw, operations ?? get().operations);
     if (!result.error) set({ savedRecipes: loadRecipes() });
     return result;
   },
