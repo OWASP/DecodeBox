@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { importRecipes, exportRecipes, loadRecipes, saveRecipe } from './recipes';
+import { OPERATIONS } from '../engine/operations';
 
 describe('recipe import/export', () => {
   beforeEach(() => localStorage.clear());
@@ -46,5 +47,38 @@ describe('recipe import/export', () => {
     const result = importRecipes(JSON.stringify({ version: 1, recipes: [{ id: 'b', name: 'B', steps: [] }] }));
     expect(result.error).toBeTruthy();
     spy.mockRestore();
+  });
+
+  it('preserves valid toggle values', () => {
+    const op = OPERATIONS.find((o) => o.id === 'add')!;
+    const json = JSON.stringify({
+      version: 1,
+      recipes: [{ id: 'r1', name: 'x', savedAt: 1, steps: [{ uid: 'u1', opId: 'add', args: [{ name: 'Key', type: 'toggleString', value: 'secret', toggleValue: 'Base64' }], disabled: false }] }],
+    });
+    const result = importRecipes(json, [op]);
+    expect(result.imported).toBe(1);
+    expect(loadRecipes()[0]!.steps[0]!.args[0]!.toggleValue).toBe('Base64');
+  });
+
+  it('resets out-of-range numeric values', () => {
+    const op = OPERATIONS.find((o) => o.id === 'to-hex')!;
+    const json = JSON.stringify({
+      version: 1,
+      recipes: [{ id: 'r1', name: 'x', savedAt: 1, steps: [{ uid: 'u1', opId: 'to-hex', args: [{ name: 'Bytes per line', type: 'number', value: 99999 }], disabled: false }] }],
+    });
+    const result = importRecipes(json, [op]);
+    expect(result.imported).toBe(1);
+    expect(loadRecipes()[0]!.steps[0]!.args[1]!.value).toBe(0);
+  });
+
+  it('drops recipes with unknown operation ids when operations are provided', () => {
+    const result = importRecipes(JSON.stringify({ version: 1, recipes: [{ id: 'r1', name: 'x', savedAt: 1, steps: [{ uid: 'u1', opId: 'nope', args: [], disabled: false }] }] }), OPERATIONS);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toBe(1);
+  });
+
+  it('rejects missing versions and raw arrays', () => {
+    expect(importRecipes(JSON.stringify({ recipes: [] })).error).toBeTruthy();
+    expect(importRecipes(JSON.stringify([])).error).toBeTruthy();
   });
 });

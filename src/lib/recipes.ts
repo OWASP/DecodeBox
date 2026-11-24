@@ -1,7 +1,6 @@
-import type { OperationArg, RecipeStep } from '../engine';
+import type { OperationArg, OperationDef, RecipeStep } from '../engine';
 import type { ArgType } from '../engine/types';
 import { randomId } from '../engine';
-import { getOperation } from '../engine/operations';
 import { safeArgValue } from './share';
 
 export interface SavedRecipe {
@@ -28,15 +27,46 @@ function readArg(value: unknown): OperationArg | null {
   if (typeof arg.name !== 'string' || typeof arg.type !== 'string') return null;
   if (!ARG_TYPES.has(arg.type as ArgType)) return null;
   const type = arg.type as ArgType;
-  return { name: arg.name, type, value: safeArgValue(arg.value, fallbackFor(type)) };
+
+  const out: OperationArg = {
+    name: arg.name,
+    type,
+    value: safeArgValue(arg.value, fallbackFor(type)),
+  };
+
+  if (Array.isArray(arg.options) && arg.options.every((o) => typeof o === 'string')) {
+    out.options = arg.options;
+  }
+  if (arg.optionLabels && typeof arg.optionLabels === 'object' && !Array.isArray(arg.optionLabels)) {
+    const labels: Record<string, string> = {};
+    let ok = true;
+    for (const [k, v] of Object.entries(arg.optionLabels)) {
+      if (typeof v !== 'string') {
+        ok = false;
+        break;
+      }
+      labels[k] = v;
+    }
+    if (ok) out.optionLabels = labels;
+  }
+  if (Array.isArray(arg.toggleValues) && arg.toggleValues.every((v) => typeof v === 'string')) {
+    out.toggleValues = arg.toggleValues;
+  }
+  if (typeof arg.toggleValue === 'string') out.toggleValue = arg.toggleValue;
+  if (typeof arg.hint === 'string') out.hint = arg.hint;
+  if (typeof arg.min === 'number' && Number.isFinite(arg.min)) out.min = arg.min;
+  if (typeof arg.max === 'number' && Number.isFinite(arg.max)) out.max = arg.max;
+
+  return out;
 }
 
-function readStep(value: unknown): RecipeStep | null {
+function readStep(value: unknown, operations: OperationDef[] = []): RecipeStep | null {
   if (typeof value !== 'object' || value === null) return null;
   const step = value as Partial<RecipeStep>;
   if (typeof step.opId !== 'string' || !Array.isArray(step.args)) return null;
 
-  const op = getOperation(step.opId);
+  const op = operations.find((o) => o.id === step.opId);
+  if (operations.length > 0 && !op) return null;
   const importedArgs = step.args;
 
   for (const raw of importedArgs) {
@@ -52,9 +82,17 @@ function readStep(value: unknown): RecipeStep | null {
       let value = found ? safeArgValue(found.value, def.value) : def.value;
       if (def.type === 'option' && def.options && !def.options.includes(String(value))) value = def.value;
       if (def.type === 'toggleString' && def.toggleValues && !def.toggleValues.includes(String(value))) value = def.value;
-      if (def.type === 'number' && typeof value !== 'number') value = def.value;
+      if (def.type === 'number') {
+        if (typeof value !== 'number' || !Number.isFinite(value)) value = def.value;
+        if (def.min !== undefined && (value as number) < def.min) value = def.value;
+        if (def.max !== undefined && (value as number) > def.max) value = def.value;
+      }
       if (def.type === 'boolean' && typeof value !== 'boolean') value = def.value;
-      return { ...def, value };
+      let toggleValue = def.toggleValue;
+      if (found && typeof found.toggleValue === 'string') {
+        if (!def.toggleValues || def.toggleValues.includes(found.toggleValue)) toggleValue = found.toggleValue;
+      }
+      return { ...def, value, toggleValue };
     });
   } else {
     args = [];
@@ -73,7 +111,7 @@ function readStep(value: unknown): RecipeStep | null {
   };
 }
 
-function readRecipe(value: unknown): SavedRecipe | null {
+function readRecipe(value: unknown, operations: OperationDef[] = []): SavedRecipe | null {
   if (typeof value !== 'object' || value === null) return null;
   const candidate = value as Partial<SavedRecipe>;
   if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string') return null;
@@ -81,7 +119,7 @@ function readRecipe(value: unknown): SavedRecipe | null {
 
   const steps: RecipeStep[] = [];
   for (const rawStep of candidate.steps) {
-    const step = readStep(rawStep);
+    const step = readStep(rawStep, operations);
     if (!step) return null;
     steps.push(step);
   }
@@ -122,7 +160,7 @@ export function exportRecipes(recipes: SavedRecipe[] = loadRecipes()): string {
   return JSON.stringify({ version: 1, recipes }, null, 2);
 }
 
-export function importRecipes(raw: string): ImportResult {
+export function importRecipes(raw: string, operations: OperationDef[] = []): ImportResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -149,7 +187,7 @@ export function importRecipes(raw: string): ImportResult {
   let skipped = 0;
 
   for (const entry of list) {
-    const recipe = readRecipe(entry);
+    const recipe = readRecipe(entry, operations);
     if (!recipe) {
       skipped += 1;
       continue;
