@@ -39,6 +39,10 @@ function readStep(value: unknown): RecipeStep | null {
   const op = getOperation(step.opId);
   const importedArgs = step.args;
 
+  for (const raw of importedArgs) {
+    if (!readArg(raw)) return null;
+  }
+
   let args: OperationArg[];
   if (op) {
     args = op.args.map((def) => {
