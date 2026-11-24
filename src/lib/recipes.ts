@@ -81,7 +81,7 @@ function readStep(value: unknown, operations: OperationDef[] = []): RecipeStep |
       ) as Partial<OperationArg> | undefined;
       let value = found ? safeArgValue(found.value, def.value) : def.value;
       if (def.type === 'option' && def.options && !def.options.includes(String(value))) value = def.value;
-      if (def.type === 'toggleString' && def.toggleValues && !def.toggleValues.includes(String(value))) value = def.value;
+      // toggleValues are format selections, not value constraints; keep the user value.
       if (def.type === 'number') {
         if (typeof value !== 'number' || !Number.isFinite(value)) value = def.value;
         if (def.min !== undefined && (value as number) < def.min) value = def.value;

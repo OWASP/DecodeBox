@@ -57,7 +57,20 @@ describe('recipe import/export', () => {
     });
     const result = importRecipes(json, [op]);
     expect(result.imported).toBe(1);
+    expect(loadRecipes()[0]!.steps[0]!.args[0]!.value).toBe('secret');
     expect(loadRecipes()[0]!.steps[0]!.args[0]!.toggleValue).toBe('Base64');
+  });
+
+  it('preserves arbitrary toggleString values and resets invalid formats', () => {
+    const op = OPERATIONS.find((o) => o.id === 'add')!;
+    const json = JSON.stringify({
+      version: 1,
+      recipes: [{ id: 'r2', name: 'x', savedAt: 1, steps: [{ uid: 'u1', opId: 'add', args: [{ name: 'Key', type: 'toggleString', value: 'my-secret-key', toggleValue: 'Nope' }], disabled: false }] }],
+    });
+    const result = importRecipes(json, [op]);
+    expect(result.imported).toBe(1);
+    expect(loadRecipes()[0]!.steps[0]!.args[0]!.value).toBe('my-secret-key');
+    expect(loadRecipes()[0]!.steps[0]!.args[0]!.toggleValue).toBe('Hex');
   });
 
   it('resets out-of-range numeric values', () => {
