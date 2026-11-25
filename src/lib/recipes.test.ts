@@ -100,6 +100,21 @@ describe('recipe import/export', () => {
     expect(result.error).toMatch(/catalogue/i);
   });
 
+  it('round-trips real operation steps with custom arguments', () => {
+    saveRecipe('Real', [
+      { uid: 'u1', opId: 'add', args: [{ name: 'Key', type: 'toggleString', value: 'my-secret-key', toggleValue: 'Base64', toggleValues: ['UTF-8', 'Hex', 'Base64', 'Latin1', 'Decimal'] }], disabled: false },
+      { uid: 'u2', opId: 'to-hex', args: [{ name: 'Bytes per line', type: 'number', value: 8, min: 0, max: 1024 }], disabled: false },
+    ]);
+    const json = exportRecipes();
+    localStorage.clear();
+    const result = importRecipes(json, OPERATIONS);
+    expect(result.imported).toBe(1);
+    const steps = loadRecipes()[0]!.steps;
+    expect(steps[0]!.args[0]!.value).toBe('my-secret-key');
+    expect(steps[0]!.args[0]!.toggleValue).toBe('Base64');
+    expect(steps[1]!.args[1]!.value).toBe(8);
+  });
+
   it('persists normalized arguments even when the recipe count is unchanged', () => {
     saveRecipe('A', [{ uid: 'u1', opId: 'to-hex', args: [{ name: 'Bytes per line', type: 'number', value: 99999 }], disabled: false }]);
     const hex = OPERATIONS.find((o) => o.id === 'to-hex')!;
@@ -112,6 +127,7 @@ describe('recipe import/export', () => {
     const add = OPERATIONS.find((o) => o.id === 'add')!;
     const bech = OPERATIONS.find((o) => o.id === 'to-bech32')!;
     const avro = OPERATIONS.find((o) => o.id === 'avro-to-json')!;
+    const template = OPERATIONS.find((o) => o.id === 'template')!;
     const json = JSON.stringify({
       version: 1,
       recipes: [{
@@ -121,15 +137,17 @@ describe('recipe import/export', () => {
           { uid: 'u2', opId: 'add', args: [{ name: 'Key', type: 'toggleString', value: 123 }], disabled: false },
           { uid: 'u3', opId: 'to-bech32', args: [{ name: 'Human-readable part', type: 'string', value: 123 }], disabled: false },
           { uid: 'u4', opId: 'avro-to-json', args: [{ name: 'Include schema', type: 'boolean', value: 'yes' }], disabled: false },
+          { uid: 'u5', opId: 'template', args: [{ name: 'Template', type: 'textarea', value: 42 }], disabled: false },
         ],
       }],
     });
-    const result = importRecipes(json, [hex, add, bech, avro]);
+    const result = importRecipes(json, [hex, add, bech, avro, template]);
     expect(result.imported).toBe(1);
     const steps = loadRecipes()[0]!.steps;
     expect(steps[0]!.args[1]!.value).toBe(0);
     expect(steps[1]!.args[0]!.value).toBe('');
     expect(steps[2]!.args[0]!.value).toBe('bc');
     expect(steps[3]!.args[1]!.value).toBe(false);
+    expect(steps[4]!.args[0]!.value).toBe('');
   });
 });
