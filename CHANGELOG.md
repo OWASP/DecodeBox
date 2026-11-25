@@ -5,6 +5,23 @@ All notable changes to OWASP DecodeBox are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.0](https://github.com/OWASP/DecodeBox/compare/v0.1.2...v0.2.0) (2026-11-25)
+
+### Added
+
+- add client-side import/export for saved recipes ([`64a6947`](https://github.com/OWASP/DecodeBox/commit/64a6947c6deb7513b5d011b6ffc87e02e4d3c2c4))
+
+### Fixed
+
+- enforce operation-aware import validation and normalization persistence ([`6be1e0f`](https://github.com/OWASP/DecodeBox/commit/6be1e0fa65f00c68fae01735b8adab5e385a50a4))
+- fail closed on empty catalogue and keep normalized recipes in sync ([`ea2f60e`](https://github.com/OWASP/DecodeBox/commit/ea2f60ebdbdc5b0211aa885e61e86c40b1b92791))
+- guard saved recipe loading during startup ([`9b9c7af`](https://github.com/OWASP/DecodeBox/commit/9b9c7af36c875148cda82ea455f15c8f286b7d69))
+- keep malformed recipes dropped while validating imported args ([`3f9a48c`](https://github.com/OWASP/DecodeBox/commit/3f9a48c3f1deedf8570334e26f86ae88f70c83b2))
+- preserve toggleString values and validate toggle format separately ([`de495b0`](https://github.com/OWASP/DecodeBox/commit/de495b020c90fd7c9e1e2f91c54720dba50bcfa3))
+- revalidate saved recipes once operations load ([`1cc1f10`](https://github.com/OWASP/DecodeBox/commit/1cc1f106528069dacc060d9dbd5b50fae858c02b))
+- validate imported args against operation defs and enforce export version ([`f059f27`](https://github.com/OWASP/DecodeBox/commit/f059f277698982bdc076c1bca593e1da0a329ef8))
+- validate toggle values and preserve safe arg metadata ([`8b62495`](https://github.com/OWASP/DecodeBox/commit/8b62495741526ffd5eb8caaa6b265583a193834b))
+
 ## [0.1.2](https://github.com/OWASP/DecodeBox/compare/v0.1.1...v0.1.2) (2026-11-23)
 
 ### Fixed
