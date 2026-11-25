@@ -1,7 +1,6 @@
 import type { OperationArg, OperationDef, RecipeStep } from '../engine';
 import type { ArgType } from '../engine/types';
 import { randomId } from '../engine';
-import { safeArgValue } from './share';
 
 export interface SavedRecipe {
   id: string;
@@ -21,6 +20,19 @@ function fallbackFor(type: ArgType): string | number | boolean {
   return '';
 }
 
+function normalizeValue(
+  type: ArgType,
+  value: unknown,
+  fallback: string | number | boolean,
+): string | number | boolean {
+  if (type === 'string' || type === 'textarea' || type === 'toggleString' || type === 'option') {
+    return typeof value === 'string' ? value : fallback;
+  }
+  if (type === 'number') return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  if (type === 'boolean') return typeof value === 'boolean' ? value : fallback;
+  return fallback;
+}
+
 function readArg(value: unknown): OperationArg | null {
   if (typeof value !== 'object' || value === null) return null;
   const arg = value as Partial<OperationArg>;
@@ -31,7 +43,7 @@ function readArg(value: unknown): OperationArg | null {
   const out: OperationArg = {
     name: arg.name,
     type,
-    value: safeArgValue(arg.value, fallbackFor(type)),
+    value: normalizeValue(type, arg.value, fallbackFor(type)),
   };
 
   if (Array.isArray(arg.options) && arg.options.every((o) => typeof o === 'string')) {
@@ -79,15 +91,13 @@ function readStep(value: unknown, operations: OperationDef[] = []): RecipeStep |
       const found = importedArgs.find(
         (a) => typeof a === 'object' && a !== null && (a as Partial<OperationArg>).name === def.name,
       ) as Partial<OperationArg> | undefined;
-      let value = found ? safeArgValue(found.value, def.value) : def.value;
+      let value = found ? normalizeValue(def.type, found.value, def.value) : def.value;
       if (def.type === 'option' && def.options && !def.options.includes(String(value))) value = def.value;
       // toggleValues are format selections, not value constraints; keep the user value.
       if (def.type === 'number') {
-        if (typeof value !== 'number' || !Number.isFinite(value)) value = def.value;
         if (def.min !== undefined && (value as number) < def.min) value = def.value;
         if (def.max !== undefined && (value as number) > def.max) value = def.value;
       }
-      if (def.type === 'boolean' && typeof value !== 'boolean') value = def.value;
       let toggleValue = def.toggleValue;
       if (found && typeof found.toggleValue === 'string') {
         if (!def.toggleValues || def.toggleValues.includes(found.toggleValue)) toggleValue = found.toggleValue;
@@ -166,7 +176,9 @@ export function normalizeRecipes(recipes: SavedRecipe[], operations: OperationDe
     const normalized = readRecipe(recipe, operations);
     if (normalized) valid.push(normalized);
   }
-  if (valid.length !== recipes.length) persist(valid);
+  if (valid.length !== recipes.length || JSON.stringify(valid) !== JSON.stringify(recipes)) {
+    persist(valid);
+  }
   return valid;
 }
 
@@ -189,6 +201,7 @@ export function importRecipes(raw: string, operations: OperationDef[] = []): Imp
 
   if (!list) return { imported: 0, skipped: 0, error: 'Expected a recipe list.' };
   if (list.length > 1000) return { imported: 0, skipped: 0, error: 'Too many recipes in file.' };
+  if (operations.length === 0) return { imported: 0, skipped: 0, error: 'Operation catalogue not loaded.' };
 
   const existing = loadRecipes();
   const existingIds = new Set(existing.map((r) => r.id));
