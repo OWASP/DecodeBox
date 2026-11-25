@@ -72,13 +72,13 @@ function readArg(value: unknown): OperationArg | null {
   return out;
 }
 
-function readStep(value: unknown, operations: OperationDef[] = []): RecipeStep | null {
+function readStep(value: unknown, operations?: OperationDef[]): RecipeStep | null {
   if (typeof value !== 'object' || value === null) return null;
   const step = value as Partial<RecipeStep>;
   if (typeof step.opId !== 'string' || !Array.isArray(step.args)) return null;
 
-  const op = operations.find((o) => o.id === step.opId);
-  if (operations.length > 0 && !op) return null;
+  const op = operations?.find((o) => o.id === step.opId);
+  if (operations && !op) return null;
   const importedArgs = step.args;
 
   for (const raw of importedArgs) {
@@ -121,7 +121,7 @@ function readStep(value: unknown, operations: OperationDef[] = []): RecipeStep |
   };
 }
 
-function readRecipe(value: unknown, operations: OperationDef[] = []): SavedRecipe | null {
+function readRecipe(value: unknown, operations?: OperationDef[]): SavedRecipe | null {
   if (typeof value !== 'object' || value === null) return null;
   const candidate = value as Partial<SavedRecipe>;
   if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string') return null;
@@ -171,13 +171,16 @@ export function exportRecipes(recipes: SavedRecipe[] = loadRecipes()): string {
 }
 
 export function normalizeRecipes(recipes: SavedRecipe[], operations: OperationDef[]): SavedRecipe[] {
+  if (operations.length === 0) throw new Error('Operation catalogue not loaded.');
+
   const valid: SavedRecipe[] = [];
   for (const recipe of recipes) {
     const normalized = readRecipe(recipe, operations);
     if (normalized) valid.push(normalized);
   }
-  if (valid.length !== recipes.length || JSON.stringify(valid) !== JSON.stringify(recipes)) {
-    persist(valid);
+  if (valid.length > MAX || valid.length !== recipes.length || JSON.stringify(valid) !== JSON.stringify(recipes)) {
+    const result = persist(valid);
+    return result.ok ? result.recipes : recipes;
   }
   return valid;
 }

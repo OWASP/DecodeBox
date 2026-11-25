@@ -98,7 +98,11 @@ export function RecipeLibrary() {
           <Download size={12} aria-hidden="true" />
           {t.library.exportRecipes}
         </Button>
-        <Button type="button" onClick={() => fileInputRef.current?.click()}>
+        <Button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={operations.length === 0}
+        >
           <Upload size={12} aria-hidden="true" />
           {t.library.importRecipes}
         </Button>

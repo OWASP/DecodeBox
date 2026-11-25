@@ -96,8 +96,24 @@ describe('recipe import/export', () => {
   });
 
   it('rejects import when the operation catalogue is unavailable', () => {
-    const result = importRecipes(JSON.stringify({ version: 1, recipes: [] }));
+    const result = importRecipes(JSON.stringify({
+      version: 1,
+      recipes: [{
+        id: 'unknown-op',
+        name: 'Unknown operation',
+        steps: [{ uid: 'u1', opId: 'not-in-catalogue', args: [], disabled: false }],
+      }],
+    }));
     expect(result.error).toMatch(/catalogue/i);
+    expect(result.imported).toBe(0);
+    expect(loadRecipes()).toHaveLength(0);
+  });
+
+  it('does not normalize recipes without an operation catalogue', () => {
+    saveRecipe('Unknown', [{ uid: 'u1', opId: 'not-in-catalogue', args: [], disabled: false }]);
+    const before = loadRecipes();
+    expect(() => normalizeRecipes(before, [])).toThrow(/catalogue/i);
+    expect(loadRecipes()).toEqual(before);
   });
 
   it('round-trips real operation steps with custom arguments', () => {
@@ -120,6 +136,55 @@ describe('recipe import/export', () => {
     const hex = OPERATIONS.find((o) => o.id === 'to-hex')!;
     normalizeRecipes(loadRecipes(), [hex]);
     expect(loadRecipes()[0]!.steps[0]!.args[1]!.value).toBe(0);
+  });
+
+  it('fails closed when normalizing without an operation catalogue', () => {
+    expect(() => normalizeRecipes([{ id: 'r1', name: 'x', steps: [{ uid: 'u1', opId: 'nope', args: [], disabled: false }], savedAt: 1 }], [])).toThrow();
+  });
+
+  it('returns the old recipes when normalization cannot be persisted', () => {
+    const hex = OPERATIONS.find((o) => o.id === 'to-hex')!;
+    const recipes = [{ id: 'r1', name: 'x', steps: [{ uid: 'u1', opId: 'to-hex', args: [{ name: 'Bytes per line', type: 'number', value: 99999 }], disabled: false }], savedAt: 1 }];
+    localStorage.setItem('decodebox-recipes', JSON.stringify(recipes));
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('no'); });
+    const result = normalizeRecipes(loadRecipes(), [hex]);
+    expect(result).toEqual(recipes);
+    spy.mockRestore();
+  });
+
+  it('trims normalized recipes to 100', () => {
+    const recipes = Array.from({ length: 101 }, (_, i) => ({ id: `r${i}`, name: 'x', steps: [], savedAt: 1 }));
+    localStorage.setItem('decodebox-recipes', JSON.stringify(recipes));
+    const result = normalizeRecipes(loadRecipes(), OPERATIONS);
+    expect(result).toHaveLength(100);
+    expect(loadRecipes()).toHaveLength(100);
+  });
+
+  it('keeps store data aligned with storage when normalization cannot persist', () => {
+    saveRecipe('A', [{ uid: 'u1', opId: 'to-hex', args: [{ name: 'Bytes per line', type: 'number', value: 99999 }], disabled: false }]);
+    const before = loadRecipes();
+    const hex = OPERATIONS.find((o) => o.id === 'to-hex')!;
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('no'); });
+
+    const normalized = normalizeRecipes(before, [hex]);
+
+    expect(normalized).toEqual(before);
+    expect(loadRecipes()).toEqual(before);
+    spy.mockRestore();
+  });
+
+  it('returns the same capped recipe list that was persisted', () => {
+    const recipes = Array.from({ length: 101 }, (_, i) => ({
+      id: `r${i}`,
+      name: `Recipe ${i}`,
+      steps: [],
+      savedAt: i,
+    }));
+
+    const normalized = normalizeRecipes(recipes, OPERATIONS);
+
+    expect(normalized).toHaveLength(100);
+    expect(loadRecipes()).toEqual(normalized);
   });
 
   it('coerces wrong primitive types to operation defaults', () => {

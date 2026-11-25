@@ -349,6 +349,7 @@ export const useStore = create<State>((set, get) => ({
   loadOperations: async () => {
     if (get().operations.length > 0) return;
     const operations = await listOperations();
+    if (operations.length === 0) return;
     set({ operations });
     set({ savedRecipes: normalizeRecipes(get().savedRecipes, operations) });
   },
