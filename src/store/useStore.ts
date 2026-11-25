@@ -51,6 +51,7 @@ interface State {
   recent: string[];
   expandedFolders: Record<string, boolean>;
   savedRecipes: SavedRecipe[];
+  savedRecipesReady: boolean;
 
   selectedStepUid: string | null;
   breakpoints: string[];
@@ -261,6 +262,7 @@ export const useStore = create<State>((set, get) => ({
   recent: read<string[]>(RECENT_KEY, []),
   expandedFolders: read<Record<string, boolean>>(EXPANDED_FOLDERS_KEY, {}) ?? {},
   savedRecipes: loadRecipes(),
+  savedRecipesReady: false,
 
   selectedStepUid: null,
   breakpoints: [],
@@ -347,11 +349,11 @@ export const useStore = create<State>((set, get) => ({
     }),
 
   loadOperations: async () => {
-    if (get().operations.length > 0) return;
-    const operations = await listOperations();
+    if (get().savedRecipesReady) return;
+    const operations = get().operations.length > 0 ? get().operations : await listOperations();
     if (operations.length === 0) return;
-    set({ operations });
-    set({ savedRecipes: normalizeRecipes(get().savedRecipes, operations) });
+    const savedRecipes = normalizeRecipes(get().savedRecipes, operations);
+    set({ operations, savedRecipes, savedRecipesReady: true });
   },
 
   restoreFromUrl: async () => {
@@ -715,6 +717,7 @@ export const useStore = create<State>((set, get) => ({
   },
 
   loadSavedRecipe: (id) => {
+    if (!get().savedRecipesReady || get().operations.length === 0) return;
     const recipe = get().savedRecipes.find((r) => r.id === id);
     if (!recipe) return;
     set({ steps: instantiate(recipe), breakpoints: [], pausedAt: null, dialog: null });

@@ -10,6 +10,7 @@ export function RecipeLibrary() {
   const chain = useStore((s) => s.chain);
   const saved = useStore((s) => s.savedRecipes);
   const operations = useStore((s) => s.operations);
+  const savedRecipesReady = useStore((s) => s.savedRecipesReady);
   const saveCurrentRecipe = useStore((s) => s.saveCurrentRecipe);
   const loadSavedRecipe = useStore((s) => s.loadSavedRecipe);
   const removeSavedRecipe = useStore((s) => s.removeSavedRecipe);
@@ -101,7 +102,7 @@ export function RecipeLibrary() {
         <Button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={operations.length === 0}
+          disabled={!savedRecipesReady}
         >
           <Upload size={12} aria-hidden="true" />
           {t.library.importRecipes}
@@ -149,6 +150,7 @@ export function RecipeLibrary() {
                   <button
                     type="button"
                     onClick={() => loadSavedRecipe(recipe.id)}
+                    disabled={!savedRecipesReady}
                     className="min-w-0 flex-1 px-2.5 py-1.5 text-start"
                   >
                     <span className="block truncate text-xs2">{recipe.name}</span>
