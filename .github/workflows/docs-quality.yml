@@ -11,6 +11,7 @@ on:
       - '.markdownlint-cli2.yaml'
       - '.github/scripts/**'
       - '.github/actions/release-please-tools/**'
+      - '.github/actions/standalone-release/**'
       - '.github/workflows/docs-quality.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
@@ -21,6 +22,7 @@ on:
       - '.markdownlint-cli2.yaml'
       - '.github/scripts/**'
       - '.github/actions/release-please-tools/**'
+      - '.github/actions/standalone-release/**'
       - '.github/workflows/docs-quality.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
@@ -60,14 +62,17 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/release-please/node_modules
         run: |
-          mkdir docs-fixture
+          mkdir -p docs-fixture/release
           cp .markdownlint-cli2.yaml docs-fixture/
-          node .github/scripts/verify-release-notes.cjs docs-fixture/CHANGELOG.md
+          cp .markdownlint-cli2.yaml docs-fixture/release/
+          # Published notes contain the same long commit citations as the changelog.
+          node .github/scripts/verify-release-notes.cjs docs-fixture/CHANGELOG.md docs-fixture/release/CHANGELOG.md
+          node --test .github/scripts/verify-release-cli.cjs
 
-      - name: Lint the generated changelog with the project configuration
+      - name: Lint the generated changelog and final release body
         uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
-          globs: docs-fixture/CHANGELOG.md
+          globs: docs-fixture/**/CHANGELOG.md
 
 # Link checking is advisory because external hosts may rate-limit CI runners.
 
