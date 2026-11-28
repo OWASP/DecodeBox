@@ -178,7 +178,7 @@ jobs:
                 echo "$url is serving this build."
                 exit 0
                 ;;
-              *src/main.tsx*)
+              *src/app/main.tsx*)
                 # This one never resolves itself: it means Pages is pointed at
                 # the source branch, so there is no reason to keep waiting.
                 echo "::error::$url is serving this repository's source index.html instead of the build, so the page is blank. Set Settings -> Pages -> Build and deployment -> Source to 'Deploy from a branch', branch 'gh-pages' / (root)."
