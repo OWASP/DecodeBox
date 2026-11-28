@@ -23,21 +23,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: ['22', '24']
-
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
-      - name: Use Node ${{ matrix.node-version }}
+      - name: Use project Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install clean packages
@@ -55,6 +50,30 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify SDK distribution
+        run: npm run check:sdk-dist
+
+      - name: Load the classic and module distributions in Chrome
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory dist >/dev/null 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          node scripts/check-sdk-browser.mjs http://127.0.0.1:8765/
+
+      - name: Exercise the Java runtime provider
+        run: |
+          archive="$RUNNER_TEMP/graaljs.tar.gz"
+          release=https://github.com/oracle/graaljs/releases/download/graal-25.0.1
+          curl -fsSL "$release/graaljs-community-jvm-25.0.1-linux-amd64.tar.gz" -o "$archive"
+          echo "7dfa228b2e9af3ad4fad77635aa105d55a31838ba522200772131db7d4560af5  $archive" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/graaljs"
+          tar -xzf "$archive" --strip-components=1 -C "$RUNNER_TEMP/graaljs"
+          "$RUNNER_TEMP/graaljs/bin/js" -e '
+            load("dist/api.js");
+            if (DecodeBox.capabilities().runtime !== "graaljs-java") throw Error("Java provider missing");
+            DecodeBox.executeOperation("sha-256", "abc").then(print);
+          ' | grep -Fx ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+
       - name: Report bundle size
         run: |
           {
@@ -67,7 +86,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build output
-        if: matrix.node-version == '22'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist
@@ -113,7 +131,7 @@ jobs:
       - name: Use Node LTS
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install clean packages

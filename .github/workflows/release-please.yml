@@ -105,7 +105,8 @@ jobs:
         if: steps.target.outputs.tag != ''
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22.23.5'
+          # Rebuild historical pre-SDK tags with their original toolchain.
+          node-version: ${{ hashFiles('released-source/scripts/build-sdk.mjs') != '' && '24.18.0' || '22.23.5' }}
           package-manager-cache: false
 
       - name: Build the standalone edition
@@ -149,6 +150,26 @@ jobs:
             jq -e --arg tag "$RELEASE_TAG" --arg name "$name" --arg digest "$digest" '
               .tag_name == $tag and .name == ("OWASP DecodeBox " + $tag) and
               any(.assets[]; .name == $name and .state == "uploaded" and .digest == $digest)'
+
+      - name: Attach SDK integrity manifest to the tagged release
+        if: steps.target.outputs.tag != ''
+        working-directory: released-source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          # Historical tags predate the SDK distribution.
+          if [[ -f scripts/check-sdk-dist.mjs ]]; then
+            npm run check:sdk-dist
+            manifest="dist/sdk/v1/${RELEASE_TAG#v}/SHA256SUMS"
+            asset="DecodeBox-SDK-$RELEASE_TAG-SHA256SUMS"
+            cp "$manifest" "$RUNNER_TEMP/$asset"
+            if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fx "$asset"; then
+              gh release download "$RELEASE_TAG" --pattern "$asset" --output - | cmp - "$manifest"
+            else
+              gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/$asset"
+            fi
+          fi
 
       - name: Create or update the Release Please PR
         if: inputs.release_tag == ''
