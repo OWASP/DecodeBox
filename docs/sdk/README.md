@@ -11,6 +11,7 @@ The same paths under `https://decodebox.owasp.org` are pending official deployme
 This example uses the existing distribution.
 
 ```html
+<meta charset="utf-8">
 <script src="https://decodebox.m4sh.ir/api.js"></script>
 <script>
   DecodeBox.ready.then(async () => {
@@ -34,6 +35,8 @@ on particular operation behavior can pin a release and verify its bytes.
 The extensionless alias on the existing Pages site uses `application/octet-stream`.
 Chromium can load it as a classic script under that site's current headers. Use `/api.js` in
 strict MIME environments and the module path for imports. GitHub Pages controls response types.
+The official classic build includes a UTF-8 signature so it also loads in documents that use
+a legacy encoding. When using the existing distribution, declare UTF-8 on the consuming page.
 
 ## Integrity and offline use
 

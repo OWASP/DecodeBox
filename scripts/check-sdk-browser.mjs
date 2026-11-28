@@ -10,8 +10,13 @@ try {
     for (const path of [...aliases[file], releasePath + '/' + file]) {
       const url = new URL(path.slice(1), base).href;
       const page = await browser.newPage();
+      page.on('pageerror', (error) => console.error(url, error.message));
+      page.on('console', (message) => {
+        if (message.type() === 'error') console.error(url, message.text());
+      });
       try {
-        // Only the empty consumer document is synthetic. Every SDK request reaches the host.
+        // Leave the document charset unspecified to exercise classic-script decoding.
+        // Every SDK request, including the extensionless alias, reaches the static host.
         await page.route(consumer, (route) =>
           route.fulfill({ contentType: 'text/html', body: '<title>Consumer</title>' }),
         );

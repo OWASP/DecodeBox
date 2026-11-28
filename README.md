@@ -35,6 +35,7 @@ The SDK uses the same local processing engine as the workbench. This example use
 SDK distribution. The official site's SDK paths will become available after deployment.
 
 ```html
+<meta charset="utf-8">
 <script src="https://decodebox.m4sh.ir/api.js"></script>
 <script>
   DecodeBox.ready.then(async () => {

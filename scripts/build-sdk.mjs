@@ -17,7 +17,12 @@ for (const [entry, format, name] of [
   await build({
     configFile: false,
     publicDir: false,
-    resolve: { conditions: ['module', 'production'], mainFields: ['module', 'main'] },
+    resolve: {
+      // Keep dependency paths in ESM region comments relative to this distribution's project.
+      preserveSymlinks: true,
+      conditions: ['module', 'production'],
+      mainFields: ['module', 'main'],
+    },
     plugins: [
       {
         name: 'whatwg-url-encoding',
@@ -50,6 +55,12 @@ for (const [entry, format, name] of [
   });
   const licensePath = dir + '/bundled-licenses.txt';
   const notices = projectNotice + '\n' + await readFile(licensePath, 'utf8');
+  // Classic scripts can inherit a legacy document encoding when the host omits a charset.
+  // A UTF-8 signature preserves Unicode literals on extensionless static hosts.
+  if (format === 'iife') {
+    const code = await readFile(dir + '/' + name);
+    await writeFile(dir + '/' + name, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), code]));
+  }
   await appendFile(dir + '/' + name, '\n/*!\n' + notices.replaceAll('*/', '* /') + '\n*/\n');
   await unlink(licensePath);
 }
