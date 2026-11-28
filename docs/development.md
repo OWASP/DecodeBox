@@ -1,6 +1,7 @@
 # Development
 
-Use Node.js 24 and install the locked dependencies. Run these commands at the repository root.
+Use Node.js 24 for development and distribution. CI also verifies Node.js 22.12 or later in the
+22.x series. Install the locked dependencies at the repository root.
 
 ```sh
 npm ci

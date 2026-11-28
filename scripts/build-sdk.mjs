@@ -65,7 +65,7 @@ for (const [entry, format, name] of [
   await unlink(licensePath);
 }
 
-const [types] = generateDtsBundle([{ filePath: 'src/sdk/index.ts', output: { noBanner: true } }], {
+const [types] = generateDtsBundle([{ filePath: 'src/sdk/index.ts', output: { noBanner: true, exportReferencedTypes: false } }], {
   preferredConfigPath: 'tsconfig.json',
 });
 await writeFile(dir + '/decodebox.d.mts', types);
