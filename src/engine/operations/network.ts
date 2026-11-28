@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { arg, type Operation } from './types';
 
@@ -115,9 +116,9 @@ export const networkOperations: Operation[] = [
       },
     ],
     run: (input, args) => {
-      let url: URL;
+      let url: ReturnType<typeof runtime.parseUrl>;
       try {
-        url = new URL(input.trim());
+        url = runtime.parseUrl(input.trim());
       } catch {
         throw new OperationError('Not a valid absolute URL. Include the scheme, such as https://.');
       }
@@ -131,7 +132,7 @@ export const networkOperations: Operation[] = [
             username: url.username || null,
             password: url.password || null,
             path: url.pathname,
-            query: Object.fromEntries(url.searchParams.entries()),
+            query: Object.fromEntries(url.searchParams),
             fragment: url.hash ? url.hash.slice(1) : null,
           },
           null,
@@ -149,7 +150,7 @@ export const networkOperations: Operation[] = [
         ...(url.hash ? [`Fragment:  ${url.hash.slice(1)}`] : []),
       ];
 
-      const params = [...url.searchParams.entries()];
+      const params = [...url.searchParams];
       if (params.length > 0) {
         lines.push('', 'Query parameters:');
         const width = Math.max(...params.map(([k]) => k.length));
@@ -186,15 +187,15 @@ export const networkOperations: Operation[] = [
       },
     ],
     run: (input, args) => {
-      const params = new URLSearchParams(input.trim().replace(/^[?&]/, ''));
-      const entries = [...params.entries()];
+      const params = runtime.query(input.trim().replace(/^[?&]/, ''));
+      const entries = [...params];
       if (entries.length === 0) throw new OperationError('No parameters found.');
 
       if (arg(args, 'Sort by name', false)) entries.sort(([a], [b]) => a.localeCompare(b));
 
       const output = String(arg(args, 'Output', 'Aligned'));
       if (output === 'JSON') {
-        const grouped: Record<string, string | string[]> = {};
+        const grouped: Record<string, string | string[]> = Object.create(null);
         for (const [key, value] of entries) {
           const seen = grouped[key];
           if (seen === undefined) grouped[key] = value;

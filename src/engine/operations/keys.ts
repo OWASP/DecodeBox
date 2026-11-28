@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { latin1ToBytes, toBytes } from '../core/bytes';
 
@@ -15,7 +16,7 @@ export function parseKey(value: string, format: string, allowEmpty = true): Uint
 
   if (format === 'Base64') {
     try {
-      return latin1ToBytes(atob(value.trim()));
+      return latin1ToBytes(runtime.fromBase64(value.trim()));
     } catch {
       throw new OperationError('Key is not valid Base64.');
     }

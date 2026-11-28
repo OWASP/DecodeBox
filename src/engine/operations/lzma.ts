@@ -1,3 +1,4 @@
+import { checkSize, MAX_OUTPUT } from '../runtime/limits';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -251,7 +252,7 @@ function decompress(bytes: Uint8Array): Uint8Array {
   const declared = view.getBigUint64(5, true);
 
   const unknownSize = declared === 0xffffffffffffffffn;
-  if (!unknownSize && declared > 1n << 31n) {
+  if (!unknownSize && declared > BigInt(MAX_OUTPUT)) {
     throw new OperationError(
       `This file declares ${declared} bytes, which is more than a browser tab can hold.`,
     );
@@ -292,6 +293,7 @@ function decompress(bytes: Uint8Array): Uint8Array {
         symbol = (symbol << 1) | decoder.bit(model.literal, offset + symbol);
       }
 
+      checkSize(out.length + 1);
       out.push(symbol & 0xff);
       state = literalState(state);
       continue;
@@ -303,6 +305,7 @@ function decompress(bytes: Uint8Array): Uint8Array {
       if (decoder.bit(model.isRepG0, state) === 0) {
         if (decoder.bit(model.isRep0Long, (state << 4) + posState) === 0) {
           state = shortRepState(state);
+          checkSize(out.length + 1);
           out.push(out[position - reps[0]! - 1] ?? 0);
           continue;
         }
@@ -352,6 +355,7 @@ function decompress(bytes: Uint8Array): Uint8Array {
       }
     }
 
+    checkSize(out.length + Math.min(length, target - out.length));
     for (let i = 0; i < length && out.length < target; i++) {
       out.push(out[out.length - reps[0]! - 1]!);
     }

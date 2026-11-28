@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import type { Layer, RecipeStep } from '../types';
 import { getOperation } from '../operations';
 import { byteLength, previewText } from '../core/bytes';
@@ -36,7 +37,7 @@ interface Budget {
 }
 
 function exhausted(budget: Budget, options: AnalyseOptions): boolean {
-  if (budget.nodes >= options.maxNodes || performance.now() > budget.deadline) {
+  if (budget.nodes >= options.maxNodes || runtime.now() > budget.deadline) {
     budget.truncated = true;
     return true;
   }
@@ -187,7 +188,7 @@ export async function explore(
 
   const budget: Budget = {
     nodes: 1,
-    deadline: performance.now() + options.budgetMs,
+    deadline: runtime.now() + options.budgetMs,
     seen: new Set([input]),
     truncated: false,
   };

@@ -3,6 +3,7 @@ import { arg, type Operation } from './types';
 
 const FILETIME_EPOCH_DIFF = 11644473600n;
 const TICKS_PER_SECOND = 10000000n;
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function requireDate(value: number, what: string): Date {
   const date = new Date(value);
@@ -39,7 +40,7 @@ function describe(date: Date): string {
     `Local:       ${date.toString()}`,
     `Unix (s):    ${Math.floor(date.getTime() / 1000)}`,
     `Unix (ms):   ${date.getTime()}`,
-    `Day:         ${date.toLocaleDateString('en', { weekday: 'long', timeZone: 'UTC' })}`,
+    `Day:         ${WEEKDAYS[date.getUTCDay()]}`,
     `Relative:    ${relative}`,
   ].join('\n');
 }

@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -80,8 +81,8 @@ class Reader {
   }
 }
 
-const utf8 = new TextEncoder();
-const fromUtf8 = new TextDecoder('utf-8', { fatal: false });
+
+const fromUtf8 = runtime.decoder('utf-8', { fatal: false });
 
 const MAX_DEPTH = 64;
 
@@ -130,7 +131,7 @@ function encodeCbor(value: unknown, out: Writer, depth = 0): void {
     return;
   }
   if (typeof value === 'string') {
-    const bytes = utf8.encode(value);
+    const bytes = runtime.encode(value);
     writeCborHead(out, 3, bytes.length);
     out.bytes(bytes);
     return;
@@ -295,7 +296,7 @@ function encodeMsgpack(value: unknown, out: Writer, depth = 0): void {
     return;
   }
   if (typeof value === 'string') {
-    const bytes = utf8.encode(value);
+    const bytes = runtime.encode(value);
     if (bytes.length < 32) {
       out.byte(0xa0 | bytes.length);
     } else if (bytes.length < 0x100) {
@@ -426,7 +427,7 @@ function decodeMsgpack(reader: Reader, depth = 0): unknown {
 function encodeBsonValue(out: Writer, key: string, value: unknown, depth: number): void {
   checkDepth(depth);
   const name = () => {
-    out.bytes(utf8.encode(key));
+    out.bytes(runtime.encode(key));
     out.byte(0);
   };
 
@@ -456,7 +457,7 @@ function encodeBsonValue(out: Writer, key: string, value: unknown, depth: number
   if (typeof value === 'string') {
     out.byte(0x02);
     name();
-    const bytes = utf8.encode(value);
+    const bytes = runtime.encode(value);
     out.uintLE(bytes.length + 1, 4);
     out.bytes(bytes);
     out.byte(0);

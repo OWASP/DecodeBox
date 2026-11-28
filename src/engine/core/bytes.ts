@@ -1,15 +1,16 @@
+import { runtime } from '../runtime';
 
 export function toBytes(text: string): Uint8Array {
-  return new TextEncoder().encode(text);
+  return runtime.encode(text);
 }
 
 export function fromBytes(bytes: Uint8Array): string {
-  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  return runtime.decoder('utf-8', { fatal: false }).decode(bytes);
 }
 
 export function tryDecodeUtf8(bytes: Uint8Array): string | null {
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return runtime.decoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
     return null;
   }

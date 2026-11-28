@@ -7,6 +7,17 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 export default tseslint.config(
   { ignores: ['dist', 'node_modules'] },
   {
+    files: ['scripts/*.mjs', 'src/engine/runtime/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: { globals: { ...globals.node, Java: 'readonly' } },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-eval': 'error',
+      'no-new-func': 'error',
+    },
+  },
+  {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
     languageOptions: {

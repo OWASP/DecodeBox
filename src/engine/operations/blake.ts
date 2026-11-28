@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -184,7 +185,7 @@ function encodeDigest(bytes: Uint8Array, encoding: string): string {
   if (encoding === 'Base64') {
     let binary = '';
     for (const byte of bytes) binary += String.fromCharCode(byte);
-    return btoa(binary);
+    return runtime.toBase64(binary);
   }
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))

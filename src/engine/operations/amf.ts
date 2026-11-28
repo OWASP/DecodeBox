@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -73,7 +74,7 @@ class Reader {
 
   utf8(length: number): string {
     this.need(length);
-    const text = new TextDecoder().decode(this.bytes.subarray(this.at, this.at + length));
+    const text = runtime.decoder().decode(this.bytes.subarray(this.at, this.at + length));
     this.at += length;
     return text;
   }
@@ -417,7 +418,7 @@ function writeAmf0(w: Writer, value: Json, depth: number): void {
     w.byte(0x00);
     w.double(value);
   } else if (typeof value === 'string') {
-    const utf8 = new TextEncoder().encode(value);
+    const utf8 = runtime.encode(value);
     if (utf8.length > 0xffff) {
       w.byte(0x0c);
       w.u32(utf8.length);
@@ -433,7 +434,7 @@ function writeAmf0(w: Writer, value: Json, depth: number): void {
   } else {
     w.byte(0x03);
     for (const [key, child] of Object.entries(value)) {
-      const utf8 = new TextEncoder().encode(key);
+      const utf8 = runtime.encode(key);
       w.u16(utf8.length);
       w.bytes(utf8);
       writeAmf0(w, child, depth + 1);
@@ -444,7 +445,7 @@ function writeAmf0(w: Writer, value: Json, depth: number): void {
 }
 
 function writeAmf3String(w: Writer, text: string): void {
-  const utf8 = new TextEncoder().encode(text);
+  const utf8 = runtime.encode(text);
   w.u29((utf8.length << 1) | 1);
   w.bytes(utf8);
 }

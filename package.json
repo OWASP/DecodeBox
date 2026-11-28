@@ -11,20 +11,25 @@
     "url": "https://github.com/OWASP/DecodeBox.git"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && vite build --mode standalone",
+    "build": "tsc --noEmit && vite build && vite build --mode standalone && npm run build:sdk",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "build:sdk": "node scripts/build-sdk.mjs",
+    "check:sdk-dist": "node scripts/check-sdk-dist.mjs"
   },
   "dependencies": {
+    "@exodus/bytes": "1.16.0",
+    "@noble/curves": "2.4.0",
     "lucide-react": "1.64.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "whatwg-url": "16.0.1",
     "zustand": "5.0.16"
   },
   "devDependencies": {
@@ -34,12 +39,14 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "dts-bundle-generator": "10.0.0",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "fast-check": "4.10.2",
     "globals": "16.5.0",
     "happy-dom": "21.0.4",
+    "playwright-core": "1.65.1",
     "postcss": "8.5.32",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",

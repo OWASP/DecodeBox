@@ -1,3 +1,5 @@
+import { checkSize, MAX_OUTPUT } from '../runtime/limits';
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { imageMime, isBmp, isPng } from './imageSignature';
 
@@ -12,7 +14,7 @@ export interface Image {
 
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
-const MAX_PIXELS = 64 * 1024 * 1024;
+const MAX_PIXELS = MAX_OUTPUT / 4;
 
 export function makeImage(width: number, height: number): Image {
   if (width <= 0 || height <= 0) throw new OperationError('An image needs a positive size.');
@@ -23,14 +25,8 @@ export function makeImage(width: number, height: number): Image {
 }
 
 
-async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-
 async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new CompressionStream('deflate'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  return runtime.transform(bytes, 'deflate', true);
 }
 
 
@@ -158,6 +154,11 @@ export async function decodePng(bytes: Uint8Array): Promise<Image> {
   if (channels === undefined) throw new OperationError(`Colour type ${colourType} is not one PNG defines.`);
   if (![1, 2, 4, 8, 16].includes(depth)) throw new OperationError(`A bit depth of ${depth} is not one PNG defines.`);
 
+  const bitsPerPixel = channels * depth;
+  const rowBytes = Math.ceil((bitsPerPixel * width) / 8);
+  const bytesPerPixel = Math.max(1, bitsPerPixel >> 3);
+  const inflatedLength = (rowBytes + 1) * height;
+  checkSize(inflatedLength);
   const image = makeImage(width, height);
 
   const total = idat.reduce((sum, part) => sum + part.length, 0);
@@ -170,14 +171,13 @@ export async function decodePng(bytes: Uint8Array): Promise<Image> {
 
   let raw: Uint8Array;
   try {
-    raw = await inflate(joined);
-  } catch {
+    raw = await runtime.transform(joined, 'deflate', false, inflatedLength);
+    if (raw.length !== inflatedLength) throw new OperationError('PNG scanline size mismatch.');
+  } catch (error) {
+    if (error instanceof OperationError) throw error;
     throw new OperationError("The PNG's compressed data could not be decompressed: the file is damaged.");
   }
 
-  const bitsPerPixel = channels * depth;
-  const rowBytes = Math.ceil((bitsPerPixel * width) / 8);
-  const bytesPerPixel = Math.max(1, bitsPerPixel >> 3);
   const pixels = unfilter(raw, width, height, bytesPerPixel, rowBytes);
 
   const sample = (row: number, index: number): number => {

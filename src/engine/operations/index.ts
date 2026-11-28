@@ -257,14 +257,20 @@ provideRegistry((id) => BY_ID.get(id), DETECTABLE);
 
 export { CATEGORY_ORDER } from './categories';
 
-export function publicDefinitions(): OperationDef[] {
-  return OPERATIONS.map(({ id, name, category, description, aliases, args, isFlowControl }) => ({
-    id,
-    name,
-    category,
-    description,
-    aliases,
+export function publicDefinition({ id, name, category, description, aliases, args, isFlowControl }: Operation): OperationDef {
+  return {
+    id, name, category, description,
+    aliases: [...aliases],
     ...(isFlowControl ? { isFlowControl } : {}),
-    args: args.map((a) => ({ ...a })),
-  }));
+    args: args.map(a => ({
+      ...a,
+      ...(a.options && { options: [...a.options] }),
+      ...(a.optionLabels && { optionLabels: { ...a.optionLabels } }),
+      ...(a.toggleValues && { toggleValues: [...a.toggleValues] }),
+    })),
+  };
+}
+
+export function publicDefinitions(): OperationDef[] {
+  return OPERATIONS.map(publicDefinition);
 }

@@ -1,3 +1,4 @@
+import { MAX_OUTPUT } from '../runtime/limits';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -28,7 +29,7 @@ class Input {
   }
 }
 
-const MAX_OUTPUT = 64 * 1024 * 1024;
+
 
 function grow(out: number[], length: number): void {
   if (out.length + length > MAX_OUTPUT) {

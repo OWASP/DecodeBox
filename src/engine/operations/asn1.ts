@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1, latin1ToBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -118,7 +119,7 @@ export const ASN1_FORMAT_ARG = {
 
 function fromBase64(text: string, what: string): Uint8Array {
   try {
-    return latin1ToBytes(atob(text.replace(/[^A-Za-z0-9+/=]/g, '')));
+    return latin1ToBytes(runtime.fromBase64(text.replace(/[^A-Za-z0-9+/=]/g, '')));
   } catch {
     throw new OperationError(`${what} does not hold valid Base64.`);
   }
@@ -310,7 +311,7 @@ function nodeValue(node: Node): string {
     case 22:
     case 26:
     case 27:
-      return new TextDecoder().decode(node.content);
+      return runtime.decoder().decode(node.content);
     case 23:
     case 24:
       return readTime(node);
@@ -344,7 +345,7 @@ function readName(node: Node): string {
       const value = pair.children[1];
       if (!oid || !value) continue;
       const name = OIDS[decodeOid(oid.content)] ?? decodeOid(oid.content);
-      parts.push(`${DN_SHORT[name] ?? name}=${new TextDecoder().decode(value.content)}`);
+      parts.push(`${DN_SHORT[name] ?? name}=${runtime.decoder().decode(value.content)}`);
     }
   }
   return parts.join(', ');
@@ -507,7 +508,7 @@ function parseSshKey(input: string): string {
 
   let bytes: Uint8Array;
   try {
-    bytes = latin1ToBytes(atob(match[1] as string));
+    bytes = latin1ToBytes(runtime.fromBase64(match[1] as string));
   } catch {
     throw new OperationError('The key is not valid Base64.');
   }
@@ -692,7 +693,7 @@ export const asn1Operations: Operation[] = [
       if (!key) throw new OperationError('The certificate has no subject public key.');
 
       const der = bytes.subarray(key.header, key.end);
-      const base64 = btoa(bytesToLatin1(der));
+      const base64 = runtime.toBase64(bytesToLatin1(der));
       const lines = base64.match(/.{1,64}/g) ?? [];
       return ['-----BEGIN PUBLIC KEY-----', ...lines, '-----END PUBLIC KEY-----', ''].join('\n');
     },

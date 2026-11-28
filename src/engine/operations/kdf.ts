@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1, latin1ToBytes } from '../core/bytes';
 import { aes } from '../core/aes';
@@ -17,11 +18,11 @@ function parseHexOrText(value: string, format: string): Uint8Array {
   return parseKey(value, format, true);
 }
 
-function subtle(): SubtleCrypto {
-  if (typeof crypto === 'undefined' || !crypto.subtle) {
+function subtle(): NonNullable<typeof runtime.subtle> {
+  if (!runtime.subtle) {
     throw new OperationError('This browser does not expose Web Crypto.');
   }
-  return crypto.subtle;
+  return runtime.subtle;
 }
 
 async function hmac(hash: string, key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
@@ -225,13 +226,13 @@ function lmKey(seven: Uint8Array): Uint8Array {
 const JWT_ALGORITHMS = ['HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512', 'ES256', 'ES384'];
 
 function base64Url(bytes: Uint8Array): string {
-  return btoa(bytesToLatin1(bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return runtime.toBase64(bytesToLatin1(bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function fromBase64Url(text: string): Uint8Array {
   const padded = text.replace(/-/g, '+').replace(/_/g, '/');
   try {
-    return latin1ToBytes(atob(padded + '='.repeat((4 - (padded.length % 4)) % 4)));
+    return latin1ToBytes(runtime.fromBase64(padded + '='.repeat((4 - (padded.length % 4)) % 4)));
   } catch {
     throw new OperationError('A token segment is not valid base64url.');
   }
@@ -241,7 +242,7 @@ function pemToDer(pem: string): Uint8Array {
   const match = /-----BEGIN [^-]+-----([\s\S]*?)-----END [^-]+-----/.exec(pem);
   if (!match) throw new OperationError('Expected a PEM key.');
   try {
-    return latin1ToBytes(atob((match[1] as string).replace(/[^A-Za-z0-9+/=]/g, '')));
+    return latin1ToBytes(runtime.fromBase64((match[1] as string).replace(/[^A-Za-z0-9+/=]/g, '')));
   } catch {
     throw new OperationError('The PEM block does not hold valid base64.');
   }
@@ -467,15 +468,14 @@ export const kdfOperations: Operation[] = [
       if (String(arg(args, 'Private/Secret key', '')).length === 0) {
         throw new OperationError('A signing key is required.');
       }
-      const encoder = new TextEncoder();
       const parts = [
-        base64Url(encoder.encode(JSON.stringify({ alg: algorithm, typ: 'JWT', ...header }))),
-        base64Url(encoder.encode(JSON.stringify(payload))),
+        base64Url(runtime.encode(JSON.stringify({ alg: algorithm, typ: 'JWT', ...header }))),
+        base64Url(runtime.encode(JSON.stringify(payload))),
       ];
 
       const key = await jwtKey(algorithm, String(arg(args, 'Private/Secret key', '')), 'sign');
       const signature = new Uint8Array(
-        await subtle().sign(jwtAlgorithmParams(algorithm), key, encoder.encode(parts.join('.'))),
+        await subtle().sign(jwtAlgorithmParams(algorithm), key, runtime.encode(parts.join('.'))),
       );
       return `${parts.join('.')}.${base64Url(signature)}`;
     },
@@ -493,7 +493,7 @@ export const kdfOperations: Operation[] = [
 
       let header: { alg?: string };
       try {
-        header = JSON.parse(new TextDecoder().decode(fromBase64Url(parts[0] as string))) as {
+        header = JSON.parse(runtime.decoder().decode(fromBase64Url(parts[0] as string))) as {
           alg?: string;
         };
       } catch {
@@ -514,11 +514,11 @@ export const kdfOperations: Operation[] = [
         jwtAlgorithmParams(algorithm),
         key,
         fromBase64Url(parts[2] as string) as BufferSource,
-        new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+        runtime.encode(`${parts[0]}.${parts[1]}`),
       );
       if (!valid) throw new OperationError('The signature does not verify with that key.');
 
-      return new TextDecoder().decode(fromBase64Url(parts[1] as string));
+      return runtime.decoder().decode(fromBase64Url(parts[1] as string));
     },
   },
 ];

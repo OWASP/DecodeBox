@@ -1,19 +1,9 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { arg, type Operation } from './types';
 
 
-function zoneNames(): string[] {
-  try {
-    const supported = (
-      Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
-    ).supportedValuesOf?.('timeZone');
-    if (supported && supported.length > 0) return ['UTC', ...supported];
-  } catch {
-  }
-  return ['UTC'];
-}
-
-const ZONES = zoneNames();
+const ZONES = runtime.timeZones();
 
 const MONTHS = [
   'January',
@@ -276,31 +266,6 @@ function fieldsFromInstant(instant: number): Partial<Fields> {
   };
 }
 
-function zoneOffset(zone: string, instant: number): number {
-  if (zone === 'UTC') return 0;
-  const formatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: zone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-  const parts: Record<string, string> = {};
-  for (const part of formatter.formatToParts(new Date(instant))) parts[part.type] = part.value;
-  const asUtc = Date.UTC(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-    Number(parts.hour) % 24,
-    Number(parts.minute),
-    Number(parts.second),
-  );
-  return Math.round((asUtc - Math.floor(instant / 1000) * 1000) / 60000);
-}
-
 function buildParser(format: string): { regex: RegExp; readers: Array<(f: Fields, t: string) => void> } {
   const readers: Array<(f: Fields, t: string) => void> = [];
   let pattern = '';
@@ -359,25 +324,13 @@ function parseDateTime(input: string, format: string, zone: string): number {
   if (Number.isNaN(naive)) throw new OperationError('Those fields are not a real date.');
   if (fields.offset !== null) return naive - fields.offset * 60000;
 
-  const first = naive - zoneOffset(zone, naive) * 60000;
-  const second = naive - zoneOffset(zone, first) * 60000;
+  const first = naive - runtime.zoneOffset(zone, naive) * 60000;
+  const second = naive - runtime.zoneOffset(zone, first) * 60000;
   return second;
 }
 
-function zoneAbbreviation(zone: string, instant: number): string {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: zone,
-      timeZoneName: 'short',
-    }).formatToParts(new Date(instant));
-    return parts.find((part) => part.type === 'timeZoneName')?.value ?? zone;
-  } catch {
-    return zone;
-  }
-}
-
 function partsFor(instant: number, zone: string): Parts {
-  const offset = zoneOffset(zone, instant);
+  const offset = runtime.zoneOffset(zone, instant);
   const shifted = new Date(instant + offset * 60000);
   return {
     year: shifted.getUTCFullYear(),
@@ -395,7 +348,7 @@ function partsFor(instant: number, zone: string): Parts {
 
 function formatDateTime(instant: number, format: string, zone: string): string {
   const parts = partsFor(instant, zone);
-  const abbreviation = zoneAbbreviation(zone, instant);
+  const abbreviation = runtime.zoneAbbreviation(zone, instant);
   let out = '';
 
   for (let i = 0; i < format.length; ) {

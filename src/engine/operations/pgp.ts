@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -140,7 +141,7 @@ function skipMpi(body: Uint8Array, at: number): { next: number; bits: number } {
 }
 
 async function fingerprint(body: Uint8Array): Promise<string> {
-  const subtle = globalThis.crypto?.subtle;
+  const subtle = runtime.subtle;
   if (!subtle) return '(needs Web Crypto)';
 
   const data = new Uint8Array(3 + body.length);
@@ -258,7 +259,7 @@ export const pgpOperations: Operation[] = [
           .filter((line) => line.trim().length > 0 && !line.includes(':') && !line.startsWith('='))
           .join('');
         try {
-          bytes = Uint8Array.from(atob(body), (c) => c.charCodeAt(0));
+          bytes = Uint8Array.from(runtime.fromBase64(body), (c) => c.charCodeAt(0));
         } catch {
           throw new OperationError('The armored block is not valid Base64.');
         }
@@ -292,7 +293,7 @@ export const pgpOperations: Operation[] = [
             }
             break;
           case 13:
-            lines.push(`User ID: ${new TextDecoder().decode(packet.body)}`);
+            lines.push(`User ID: ${runtime.decoder().decode(packet.body)}`);
             break;
           case 17:
             lines.push(`User attribute: ${packet.body.length} bytes (usually a photograph)`);

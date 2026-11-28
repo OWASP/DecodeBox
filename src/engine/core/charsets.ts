@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 
 import { OperationError } from '../types';
 import { bytesToLatin1 } from './bytes';
@@ -54,7 +55,7 @@ const DEFINITIONS: CharsetDefinition[] = [
 function supported(definition: CharsetDefinition): boolean {
   if (definition.identity) return true;
   try {
-    new TextDecoder(definition.label);
+    runtime.decoder(definition.label);
     return true;
   } catch {
     return false;
@@ -85,7 +86,7 @@ const CP1252_C1 = [
 
 const CP1252_IS_HONEST = (() => {
   try {
-    return new TextDecoder('windows-1252').decode(new Uint8Array([0x80])) === '€';
+    return runtime.decoder('windows-1252').decode(new Uint8Array([0x80])) === '€';
   } catch {
     return false;
   }
@@ -104,7 +105,7 @@ export function decodeCharset(name: string, bytes: Uint8Array): string {
   const definition = definitionFor(name);
   if (definition.identity) return bytesToLatin1(bytes);
   if (definition.label === 'windows-1252' && !CP1252_IS_HONEST) return decodeCp1252(bytes);
-  return new TextDecoder(definition.label).decode(bytes);
+  return runtime.decoder(definition.label).decode(bytes);
 }
 
 
@@ -114,7 +115,7 @@ function reverseTable(definition: CharsetDefinition): Map<string, number[]> {
   const cached = reverseTables.get(definition.label);
   if (cached) return cached;
 
-  const decoder = new TextDecoder(definition.label, { fatal: true });
+  const decoder = runtime.decoder(definition.label, { fatal: true });
   const table = new Map<string, number[]>();
 
   const patched = definition.label === 'windows-1252' && !CP1252_IS_HONEST;
@@ -174,7 +175,7 @@ export function encodeCharset(name: string, text: string): Uint8Array {
     }
     return out;
   }
-  if (definition.label === 'utf-8') return new TextEncoder().encode(text);
+  if (definition.label === 'utf-8') return runtime.encode(text);
   if (definition.label === 'utf-16le') return encodeUtf16(text, true);
   if (definition.label === 'utf-16be') return encodeUtf16(text, false);
 

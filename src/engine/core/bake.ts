@@ -1,3 +1,5 @@
+import { checkSize } from '../runtime/limits';
+import { runtime } from '../runtime';
 import type { BakeResult, OperationArg, OutputType, Recipe, RecipeStep } from '../types';
 import { OperationError } from '../types';
 import { getOperation } from '../operations';
@@ -26,21 +28,6 @@ function classify(output: string): OutputType {
   }
   if (output.length > 0 && printableRatio(asBytes(output)) < 0.85) return 'bytes';
   return 'text';
-}
-
-async function withTimeout(work: Promise<string>, opName: string, budget: number): Promise<string> {
-  let timer: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(
-      () => reject(new OperationError(`${opName} took longer than ${budget}ms.`)),
-      budget,
-    );
-  });
-  try {
-    return await Promise.race([work, timeout]);
-  } finally {
-    clearTimeout(timer!);
-  }
 }
 
 function unescape(text: string): string {
@@ -114,10 +101,11 @@ async function runStep(
 
   const budget = operation.budgetMs ?? STEP_TIMEOUT_MS;
   if (budget > STEP_TIMEOUT_MS) {
-    machine.deadline = Math.max(machine.deadline, performance.now() + budget + 1000);
+    machine.deadline = Math.max(machine.deadline, runtime.now() + budget + 1000);
   }
 
-  return withTimeout(Promise.resolve(operation.run(value, prepared.args)), operation.name, budget);
+  return runtime.timed(() => operation.run(value, prepared.args), budget,
+    () => new OperationError(operation.name + ' took longer than ' + budget + 'ms.'));
 }
 
 async function execute(
@@ -130,7 +118,7 @@ async function execute(
   let pc = 0;
 
   while (pc < steps.length) {
-    if (performance.now() > machine.deadline) {
+    if (runtime.now() > machine.deadline) {
       throw new OperationError(`The recipe ran for longer than ${RECIPE_TIMEOUT_MS}ms.`);
     }
 
@@ -212,6 +200,7 @@ async function execute(
           );
 
           const results: string[] = [];
+          let total = 0;
           for (const branch of branches) {
             try {
               results.push(await execute(body, branch, machine, offset + pc + 1));
@@ -219,6 +208,8 @@ async function execute(
               if (error instanceof ReturnSignal || !forgiving) throw error;
               results.push(branch);
             }
+            total += results[results.length - 1]!.length + (results.length > 1 ? joinWith.length : 0);
+            checkSize(total);
           }
 
           value = results.join(joinWith);
@@ -254,6 +245,7 @@ async function execute(
               if (error instanceof ReturnSignal || !forgiving) throw error;
               out += found[0];
             }
+            checkSize(out.length);
             cursor = at + found[0].length;
           }
 
@@ -267,6 +259,7 @@ async function execute(
           pc++;
         }
       }
+      checkSize(value.length);
     } catch (error) {
       completed = error instanceof ReturnSignal && step.opId === 'return';
       if (error instanceof ReturnSignal) throw error;
@@ -285,7 +278,7 @@ async function execute(
 }
 
 export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
-  const started = performance.now();
+  const started = runtime.now();
   const machine: Machine = {
     completed: new Set(),
     registers: [],
@@ -302,7 +295,7 @@ export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
       output,
       outputType: classify(output),
       byteLength: byteLength(output),
-      durationMs: performance.now() - started,
+      durationMs: runtime.now() - started,
     };
   } catch (error) {
     if (error instanceof ReturnSignal) {
@@ -311,7 +304,7 @@ export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
         output: error.value,
         outputType: classify(error.value),
         byteLength: byteLength(error.value),
-        durationMs: performance.now() - started,
+        durationMs: runtime.now() - started,
       };
     }
 
@@ -320,7 +313,7 @@ export async function bake(input: string, recipe: Recipe): Promise<BakeResult> {
       output: '',
       outputType: 'text',
       byteLength: 0,
-      durationMs: performance.now() - started,
+      durationMs: runtime.now() - started,
       error: {
         stepIndex: machine.failedAt ?? 0,
         message:

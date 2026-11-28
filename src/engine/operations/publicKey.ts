@@ -1,10 +1,11 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
 
 
-function subtle(): SubtleCrypto {
-  const api = globalThis.crypto?.subtle;
+function subtle(): NonNullable<typeof runtime.subtle> {
+  const api = runtime.subtle;
   if (!api) {
     throw new OperationError('This needs Web Crypto, which the browser has not exposed here.');
   }
@@ -15,7 +16,7 @@ function subtle(): SubtleCrypto {
 function fromBase64(text: string): Uint8Array {
   const cleaned = text.replace(/\s+/g, '');
   try {
-    return Uint8Array.from(atob(cleaned), (c) => c.charCodeAt(0));
+    return Uint8Array.from(runtime.fromBase64(cleaned), (c) => c.charCodeAt(0));
   } catch {
     throw new OperationError('The key is not valid Base64.');
   }
@@ -24,7 +25,7 @@ function fromBase64(text: string): Uint8Array {
 function toBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
+  return runtime.toBase64(binary);
 }
 
 function toPem(label: string, bytes: Uint8Array): string {
@@ -347,7 +348,7 @@ export const publicKeyOperations: Operation[] = [
       const key = await importPrivate(String(arg(args, 'Key', '')), pss ? 'RSA-PSS' : 'RSASSA-PKCS1-v1_5', hash, 'P-256', ['sign']);
 
       const parameters = pss
-        ? { name: 'RSA-PSS', saltLength: Number(hash.slice(4)) / 8 }
+        ? { name: 'RSA-PSS', saltLength: hash === 'SHA-1' ? 20 : Number(hash.slice(4)) / 8 }
         : { name: 'RSASSA-PKCS1-v1_5' };
       const signature = await subtle().sign(parameters, key, asBytes(input) as BufferSource);
       return encodeOutput(new Uint8Array(signature), String(arg(args, 'Output', 'Base64')));
@@ -379,7 +380,7 @@ export const publicKeyOperations: Operation[] = [
       if (signature.length === 0) throw new OperationError('There is no signature to check.');
 
       const parameters = pss
-        ? { name: 'RSA-PSS', saltLength: Number(hash.slice(4)) / 8 }
+        ? { name: 'RSA-PSS', saltLength: hash === 'SHA-1' ? 20 : Number(hash.slice(4)) / 8 }
         : { name: 'RSASSA-PKCS1-v1_5' };
       const valid = await subtle().verify(
         parameters,

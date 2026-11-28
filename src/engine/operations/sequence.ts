@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -164,7 +165,7 @@ export const sequenceOperations: Operation[] = [
       const pieces = delimiter === '' ? [...input] : input.split(delimiter);
 
       const random = new Uint32Array(pieces.length);
-      crypto.getRandomValues(random);
+      runtime.random(random);
       for (let i = pieces.length - 1; i > 0; i--) {
         const j = (random[i] as number) % (i + 1);
         [pieces[i], pieces[j]] = [pieces[j] as string, pieces[i] as string];
@@ -238,7 +239,7 @@ export const sequenceOperations: Operation[] = [
     run: async (input, args) => {
       const wanted = Number(arg(args, 'Time (ms)', 1000));
       const time = Math.min(Math.max(0, wanted), MAX_SLEEP_MS);
-      await new Promise((resolve) => setTimeout(resolve, time));
+      await runtime.delay(time);
       return input;
     },
   },
@@ -260,7 +261,7 @@ export const sequenceOperations: Operation[] = [
     run: (_input, args) => {
       const count = Math.min(65536, Math.max(1, Number(arg(args, 'Number of bytes', 32))));
       const bytes = new Uint8Array(count);
-      crypto.getRandomValues(bytes);
+      runtime.random(bytes);
 
       switch (String(arg(args, 'Output as', 'Hex'))) {
         case 'Integer': {
@@ -303,7 +304,7 @@ export const sequenceOperations: Operation[] = [
       const out: number[] = [];
       const buffer = new Uint32Array(1);
       while (out.length < count) {
-        crypto.getRandomValues(buffer);
+        runtime.random(buffer);
         const value = buffer[0] as number;
         if (value < limit) out.push(min + (value % range));
       }

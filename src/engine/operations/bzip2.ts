@@ -1,3 +1,4 @@
+import { checkSize, MAX_OUTPUT } from '../runtime/limits';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -164,25 +165,27 @@ function inverseBwt(block: Uint8Array, origPtr: number): Uint8Array {
   return out;
 }
 
-function undoRle(bytes: Uint8Array): Uint8Array {
+function undoRle(bytes: Uint8Array, remaining: number): Uint8Array {
   const out: number[] = [];
   let i = 0;
   while (i < bytes.length) {
     const byte = bytes[i]!;
     let run = 1;
     while (run < 4 && i + run < bytes.length && bytes[i + run] === byte) run++;
+    checkSize(out.length + run, remaining);
     for (let k = 0; k < run; k++) out.push(byte);
     i += run;
     if (run === 4) {
       if (i >= bytes.length) throw new OperationError('A run in this block has no length byte.');
       const extra = bytes[i++]!;
+      checkSize(out.length + extra, remaining);
       for (let k = 0; k < extra; k++) out.push(byte);
     }
   }
   return new Uint8Array(out);
 }
 
-function decodeBlock(reader: BitReader, blockSize: number): { data: Uint8Array; crc: number } {
+function decodeBlock(reader: BitReader, blockSize: number, remaining: number): { data: Uint8Array; crc: number } {
   const crc = reader.bits(32);
   if (reader.bit() !== 0) {
     throw new OperationError(
@@ -263,7 +266,7 @@ function decodeBlock(reader: BitReader, blockSize: number): { data: Uint8Array; 
 
     if (symbol <= 1) {
       runLength += (symbol + 1) << runBit;
-      runBit++;
+      if (runLength > blockSize || ++runBit > 21) throw new OperationError('Oversize bzip2 run.');
       continue;
     }
 
@@ -285,7 +288,7 @@ function decodeBlock(reader: BitReader, blockSize: number): { data: Uint8Array; 
   }
 
   if (origPtr >= written) throw new OperationError('The block pointer points outside the block.');
-  const data = undoRle(inverseBwt(block.subarray(0, written), origPtr));
+  const data = undoRle(inverseBwt(block.subarray(0, written), origPtr), remaining);
 
   const actual = crc32(data);
   if (actual !== crc) {
@@ -307,6 +310,7 @@ function decompress(bytes: Uint8Array): Uint8Array {
 
   const reader = new BitReader(bytes.subarray(4));
   const pieces: Uint8Array[] = [];
+  let remaining = MAX_OUTPUT;
   let combined = 0;
 
   for (;;) {
@@ -324,7 +328,8 @@ function decompress(bytes: Uint8Array): Uint8Array {
       throw new OperationError('A block does not begin with the expected marker.');
     }
 
-    const piece = decodeBlock(reader, level * 100000);
+    const piece = decodeBlock(reader, level * 100000, remaining);
+    remaining -= piece.data.length;
     combined = (((combined << 1) | (combined >>> 31)) ^ piece.crc) >>> 0;
     pieces.push(piece.data);
 

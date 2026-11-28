@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError, type OperationArg } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { decodeBaseN, encodeBaseN } from '../core/alphabet';
@@ -655,7 +656,7 @@ export const dataFormatOperations: Operation[] = [
       const trimmed = bytes.length % 2 === 0 ? bytes : bytes.subarray(0, bytes.length - 1);
       const encoding =
         arg(args, 'Byte order', 'Little-endian') === 'Big-endian' ? 'utf-16be' : 'utf-16le';
-      let decoded = new TextDecoder(encoding).decode(trimmed as BufferSource);
+      let decoded = runtime.decoder(encoding).decode(trimmed);
       if (arg(args, 'Remove the byte order mark', true) && decoded.charCodeAt(0) === 0xfeff) {
         decoded = decoded.slice(1);
       }

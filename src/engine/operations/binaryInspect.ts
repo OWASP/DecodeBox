@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -100,11 +101,11 @@ function readBinaryPlist(bytes: Uint8Array): Json {
       }
       case 0x5: {
         const { length, next } = lengthAt(at);
-        return new TextDecoder('ascii').decode(bytes.subarray(next, next + length));
+        return runtime.decoder('ascii').decode(bytes.subarray(next, next + length));
       }
       case 0x6: {
         const { length, next } = lengthAt(at);
-        return new TextDecoder('utf-16be').decode(bytes.subarray(next, next + length * 2));
+        return runtime.decoder('utf-16be').decode(bytes.subarray(next, next + length * 2));
       }
       case 0x8:
         return `UID ${r.int(at + 1, (marker & 0x0f) + 1)}`;
@@ -203,7 +204,7 @@ function readXmlPlist(text: string): Json {
         case 'data': {
           const cleaned = body.replace(/\s+/g, '');
           try {
-            place(hex(Uint8Array.from(atob(cleaned), (c) => c.charCodeAt(0))));
+            place(hex(Uint8Array.from(runtime.fromBase64(cleaned), (c) => c.charCodeAt(0))));
           } catch {
             throw new OperationError('A <data> element is not valid Base64.');
           }
@@ -342,7 +343,7 @@ function readElf(bytes: Uint8Array, wanted: string): string {
   const cString = (at: number): string => {
     let end = at;
     while (end < bytes.length && bytes[end] !== 0) end++;
-    return new TextDecoder('ascii').decode(bytes.subarray(at, end));
+    return runtime.decoder('ascii').decode(bytes.subarray(at, end));
   };
 
   let stringTable = -1;
@@ -406,7 +407,7 @@ export const binaryInspectOperations: Operation[] = [
     args: [{ name: 'Indent', type: 'number', value: 2, min: 0, max: 8 }],
     run: (input, args) => {
       const bytes = asBytes(input);
-      const isBinary = new TextDecoder('ascii').decode(bytes.subarray(0, 8)) === 'bplist00';
+      const isBinary = runtime.decoder('ascii').decode(bytes.subarray(0, 8)) === 'bplist00';
       const value = isBinary ? readBinaryPlist(bytes) : readXmlPlist(input);
 
       if (!isBinary && value === null && !/<plist/i.test(input)) {

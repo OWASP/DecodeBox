@@ -1,3 +1,5 @@
+import { checkSize, MAX_OUTPUT } from '../runtime/limits';
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -12,7 +14,7 @@ class Reader {
   at = 0;
   readonly view: DataView;
 
-  constructor(readonly bytes: Uint8Array) {
+  constructor(readonly bytes: Uint8Array, readonly budget = { values: 0 }) {
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   }
 
@@ -21,7 +23,7 @@ class Reader {
   }
 
   need(count: number): void {
-    if (this.at + count > this.bytes.length) {
+    if (!Number.isSafeInteger(count) || count < 0 || this.at + count > this.bytes.length) {
       throw new OperationError(
         `The file ends in the middle of a value (wanted ${count} more bytes at offset ${this.at}).`,
       );
@@ -70,7 +72,7 @@ class Reader {
   string(): string {
     const length = Number(this.long());
     if (length < 0) throw new OperationError('A string claims a negative length.');
-    return new TextDecoder().decode(this.take(length));
+    return runtime.decoder().decode(this.take(length));
   }
 }
 
@@ -111,6 +113,7 @@ function logical(schema: Schema, value: Json): Json {
 }
 
 function readValue(r: Reader, schema: Schema, named: Named, namespace: string, depth: number): Json {
+  checkSize(++r.budget.values, 1_000_000);
   if (depth > 64) throw new OperationError('The schema nests more than 64 levels deep.');
 
   if (typeof schema === 'string' && named.has(schema)) {
@@ -172,7 +175,7 @@ function readValue(r: Reader, schema: Schema, named: Named, namespace: string, d
     }
     case 'map': {
       const values = object?.values ?? null;
-      const out: { [key: string]: Json } = {};
+      const out: { [key: string]: Json } = Object.create(null);
       for (;;) {
         let count = Number(r.long());
         if (count === 0) break;
@@ -197,7 +200,7 @@ function readValue(r: Reader, schema: Schema, named: Named, namespace: string, d
       const fields = object?.fields;
       if (!Array.isArray(fields)) throw new OperationError('A record has no fields.');
       const inner = object ? fullName(object, namespace).split('.').slice(0, -1).join('.') : namespace;
-      const out: { [key: string]: Json } = {};
+      const out: { [key: string]: Json } = Object.create(null);
       for (const field of fields) {
         if (!field || typeof field !== 'object' || Array.isArray(field)) {
           throw new OperationError('A record field is not an object.');
@@ -239,10 +242,6 @@ function collectNames(schema: Schema, named: Named, namespace: string): void {
   if (kind === 'map') collectNames(schema.values ?? null, named, inner);
 }
 
-async function inflate(bytes: Uint8Array, format: 'deflate-raw' | 'deflate'): Promise<Uint8Array> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream(format));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
 
 export const avroOperations: Operation[] = [
   {
@@ -286,13 +285,13 @@ export const avroOperations: Operation[] = [
       if (!schemaText) throw new OperationError('The file header carries no avro.schema.');
       let schema: Schema;
       try {
-        schema = JSON.parse(new TextDecoder().decode(schemaText)) as Schema;
+        schema = JSON.parse(runtime.decoder().decode(schemaText)) as Schema;
       } catch {
         throw new OperationError('The schema in the header is not valid JSON.');
       }
 
       const codec = meta.has('avro.codec')
-        ? new TextDecoder().decode(meta.get('avro.codec')!)
+        ? runtime.decoder().decode(meta.get('avro.codec')!)
         : 'null';
       if (codec !== 'null' && codec !== 'deflate') {
         throw new OperationError(
@@ -305,19 +304,23 @@ export const avroOperations: Operation[] = [
       collectNames(schema, named, '');
 
       const records: Json[] = [];
+      let remaining = MAX_OUTPUT;
       while (!r.done) {
         const count = Number(r.long());
         const size = Number(r.long());
         let block: Uint8Array = r.take(size).slice();
         if (codec === 'deflate') {
           try {
-            block = await inflate(block, 'deflate-raw');
+            block = await runtime.transform(block, 'deflate-raw', false, remaining);
           } catch {
             throw new OperationError('A deflate block in this file could not be decompressed.');
           }
         }
 
-        const inner = new Reader(block);
+        checkSize(block.length, remaining);
+        remaining -= block.length;
+        checkSize(records.length + count, 1_000_000);
+        const inner = new Reader(block, r.budget);
         for (let i = 0; i < count; i++) {
           records.push(readValue(inner, schema, named, '', 0));
         }

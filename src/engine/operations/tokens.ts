@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1, toBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -8,7 +9,7 @@ function base64UrlToBytes(text: string): Uint8Array {
   const normalised = text.trim().replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalised + '='.repeat((4 - (normalised.length % 4)) % 4);
   try {
-    return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    return Uint8Array.from(runtime.fromBase64(padded), (c) => c.charCodeAt(0));
   } catch {
     throw new OperationError('That is not valid URL-safe Base64.');
   }
@@ -17,12 +18,12 @@ function base64UrlToBytes(text: string): Uint8Array {
 function bytesToBase64Url(bytes: Uint8Array, padded = false): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_');
+  const encoded = runtime.toBase64(binary).replace(/\+/g, '-').replace(/\//g, '_');
   return padded ? encoded : encoded.replace(/=+$/, '');
 }
 
-function subtle(): SubtleCrypto {
-  const api = globalThis.crypto?.subtle;
+function subtle(): NonNullable<typeof runtime.subtle> {
+  const api = runtime.subtle;
   if (!api) throw new OperationError('This needs Web Crypto, which the browser has not exposed here.');
   return api;
 }
@@ -87,13 +88,11 @@ async function flaskKey(secret: string, salt: string): Promise<Uint8Array> {
 }
 
 async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  return runtime.transform(bytes, 'deflate', false);
 }
 
 async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new CompressionStream('deflate'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  return runtime.transform(bytes, 'deflate', true);
 }
 
 function encodeTimestamp(seconds: number): Uint8Array {
@@ -154,7 +153,7 @@ export const tokenOperations: Operation[] = [
       const seconds = given > 0 ? Math.trunc(given) : Math.floor(Date.now() / 1000);
 
       const iv = new Uint8Array(16);
-      globalThis.crypto.getRandomValues(iv);
+      runtime.random(iv);
 
       const header = new Uint8Array(9);
       header[0] = FERNET_VERSION;

@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1, latin1ToBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -31,7 +32,7 @@ function isPlainContentByte(byte: number, convertSpaces: boolean): boolean {
 
 function decodeCharset(charset: string, bytes: Uint8Array): string {
   try {
-    return new TextDecoder(charset.toLowerCase(), { fatal: false }).decode(bytes);
+    return runtime.decoder(charset.toLowerCase(), { fatal: false }).decode(bytes);
   } catch {
     throw new OperationError(`'${charset}' is not a character set this browser knows.`);
   }
@@ -173,7 +174,7 @@ export const wireOperations: Operation[] = [
 
         const base64 = input.slice(bodyStart, bodyEnd).replace(/[^A-Za-z0-9+/=]/g, '');
         try {
-          blocks.push(hexOf(latin1ToBytes(atob(base64))));
+          blocks.push(hexOf(latin1ToBytes(runtime.fromBase64(base64))));
         } catch {
           throw new OperationError(`The ${label} block does not hold valid Base64.`);
         }
@@ -199,7 +200,7 @@ export const wireOperations: Operation[] = [
       if (!/^[A-Z][A-Z0-9 ]*$/.test(label)) {
         throw new OperationError('A PEM label is upper-case letters, digits and spaces.');
       }
-      const base64 = btoa(bytesToLatin1(parseHex(input)));
+      const base64 = runtime.toBase64(bytesToLatin1(parseHex(input)));
       const lines = base64.match(new RegExp(`.{1,${PEM_LINE_LENGTH}}`, 'g')) ?? [];
       return [`-----BEGIN ${label}-----`, ...lines, `-----END ${label}-----`, ''].join('\n');
     },
@@ -282,7 +283,7 @@ export const wireOperations: Operation[] = [
         let bytes: Uint8Array;
         if (encoding.toLowerCase() === 'b') {
           try {
-            bytes = latin1ToBytes(atob(body.replace(/[^A-Za-z0-9+/=]/g, '')));
+            bytes = latin1ToBytes(runtime.fromBase64(body.replace(/[^A-Za-z0-9+/=]/g, '')));
           } catch {
             throw new OperationError('An encoded word does not hold valid Base64.');
           }
@@ -365,7 +366,7 @@ export const wireOperations: Operation[] = [
       let bytes: Uint8Array;
       if (String(arg(args, 'Input format', 'Raw')) === 'Base64') {
         try {
-          bytes = latin1ToBytes(atob(input.replace(/[^A-Za-z0-9+/=]/g, '')));
+          bytes = latin1ToBytes(runtime.fromBase64(input.replace(/[^A-Za-z0-9+/=]/g, '')));
         } catch {
           throw new OperationError('Input is not valid Base64.');
         }
@@ -383,7 +384,7 @@ export const wireOperations: Operation[] = [
       for (let offset = 0; offset < 3; offset++) {
         const padded = new Uint8Array(offset + bytes.length);
         padded.set(bytes, offset);
-        const encoded = btoa(bytesToLatin1(padded));
+        const encoded = runtime.toBase64(bytesToLatin1(padded));
 
         const head = offset === 0 ? 0 : offset + 1;
         const unpadded = encoded.indexOf('=') === -1 ? encoded.length : encoded.indexOf('=');

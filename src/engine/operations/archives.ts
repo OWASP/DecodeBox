@@ -1,13 +1,14 @@
+import { checkSize } from '../runtime/limits';
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
 
 
-const utf8 = new TextEncoder();
+
 
 async function deflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  return runtime.transform(bytes, 'deflate-raw', true);
 }
 
 const CRC_TABLE = (() => {
@@ -56,7 +57,7 @@ const TAR_BLOCK = 512;
 function tarHeader(name: string, size: number): Uint8Array {
   const header = new Uint8Array(TAR_BLOCK);
   const write = (text: string, at: number, width: number) => {
-    const bytes = utf8.encode(text.slice(0, width - 1));
+    const bytes = runtime.encode(text.slice(0, width - 1));
     header.set(bytes, at);
   };
 
@@ -161,7 +162,9 @@ function lz4DecompressBlock(bytes: Uint8Array, out: number[]): void {
         literals += more;
       }
     }
-    for (let i = 0; i < literals && at < bytes.length; i++) out.push(bytes[at++] as number);
+    if (at + literals > bytes.length) throw new OperationError('Truncated LZ4 literals.');
+    checkSize(out.length + literals);
+    for (let i = 0; i < literals; i++) out.push(bytes[at++] as number);
     if (at + 1 >= bytes.length) break;
 
     const offset = (bytes[at++] as number) | ((bytes[at++] as number) << 8);
@@ -176,6 +179,7 @@ function lz4DecompressBlock(bytes: Uint8Array, out: number[]): void {
     }
     length += 4;
 
+    checkSize(out.length + length);
     const start = out.length - offset;
     if (start < 0) throw new OperationError('An LZ4 match points before the start of the data.');
     for (let i = 0; i < length; i++) out.push(out[start + i] as number);
@@ -297,6 +301,7 @@ function lzStringDecompress(length: number, resetValue: number, at: (index: numb
   let numBits = 3;
   let entry = '';
   const result: string[] = [];
+  let outputLength = 1;
 
   let position = resetValue;
   let index = 0;
@@ -354,6 +359,8 @@ function lzStringDecompress(length: number, resetValue: number, at: (index: numb
       throw new OperationError('The compressed stream refers to an unknown dictionary entry.');
     }
 
+    outputLength += entry.length;
+    checkSize(outputLength);
     result.push(entry);
     dictionary[dictSize++] = word + entry.charAt(0);
     enlargeIn--;
@@ -380,6 +387,7 @@ function lznt1Decompress(bytes: Uint8Array): Uint8Array {
     const compressed = (header & 0x8000) !== 0;
     const end = Math.min(at + size, bytes.length);
 
+    checkSize(out.length + 4096);
     if (!compressed) {
       for (; at < end; at++) out.push(bytes[at] as number);
       continue;
@@ -405,7 +413,8 @@ function lznt1Decompress(bytes: Uint8Array): Uint8Array {
         const length = (pair & ((1 << shift) - 1)) + 3;
         const offset = (pair >> shift) + 1;
         const from = out.length - offset;
-        if (from < 0) throw new OperationError('An LZNT1 reference points before the chunk.');
+        if (out.length - chunkStart + length > 4096) throw new OperationError('LZNT1 chunk exceeds 4 KiB.');
+        if (from < chunkStart) throw new OperationError('An LZNT1 reference points before the chunk.');
         for (let i = 0; i < length; i++) out.push(out[from + i] as number);
       }
     }
@@ -437,11 +446,11 @@ export const archiveOperations: Operation[] = [
 
       const content = asBytes(input);
       const body = deflated ? await deflateRaw(content) : content;
-      const nameBytes = utf8.encode(name);
+      const nameBytes = runtime.encode(name);
       const crc = crc32(content);
 
       const local = new Bytes();
-      local.add(utf8.encode('PK\x03\x04'));
+      local.add(runtime.encode('PK\x03\x04'));
       local.le(20, 2);
       local.le(0, 2);
       local.le(deflated ? 8 : 0, 2);
@@ -456,7 +465,7 @@ export const archiveOperations: Operation[] = [
       local.add(body);
 
       const central = new Bytes();
-      central.add(utf8.encode('PK\x01\x02'));
+      central.add(runtime.encode('PK\x01\x02'));
       central.le(20, 2);
       central.le(20, 2);
       central.le(0, 2);
@@ -476,8 +485,8 @@ export const archiveOperations: Operation[] = [
       central.add(nameBytes);
 
       const end = new Bytes();
-      const commentBytes = utf8.encode(comment);
-      end.add(utf8.encode('PK\x05\x06'));
+      const commentBytes = runtime.encode(comment);
+      end.add(runtime.encode('PK\x05\x06'));
       end.le(0, 2);
       end.le(0, 2);
       end.le(1, 2);
@@ -603,6 +612,8 @@ export const archiveOperations: Operation[] = [
 
         const uncompressed = (size & 0x80000000) !== 0;
         const length = size & 0x7fffffff;
+        if (at + length > bytes.length) throw new OperationError('Truncated LZ4 block.');
+        if (uncompressed) checkSize(out.length + length);
         const block = bytes.subarray(at, at + length);
         at += length;
         if (uncompressed) for (const byte of block) out.push(byte);

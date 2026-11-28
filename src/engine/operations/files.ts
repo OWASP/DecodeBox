@@ -1,3 +1,5 @@
+import { runtime } from '../runtime';
+import { checkSize } from '../runtime/limits';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -266,9 +268,14 @@ async function extractZipEntry(bytes: Uint8Array, entry: ZipEntry): Promise<Uint
   if (u32(bytes, local) !== 0x04034b50) throw new OperationError('Corrupt ZIP local header.');
 
   const start = local + 30 + u16(bytes, local + 26) + u16(bytes, local + 28);
+  checkSize(entry.uncompressed);
+  if (start + entry.compressed > bytes.length) throw new OperationError('Truncated ZIP entry.');
   const data = bytes.subarray(start, start + entry.compressed);
 
-  if (entry.method === 0) return data;
+  if (entry.method === 0) {
+    if (entry.compressed !== entry.uncompressed) throw new OperationError('Stored ZIP entry size mismatch.');
+    return data;
+  }
   if (entry.method !== 8) {
     throw new OperationError(
       `This entry uses compression method ${entry.method}. Only stored and deflate are supported.`,
@@ -276,11 +283,11 @@ async function extractZipEntry(bytes: Uint8Array, entry: ZipEntry): Promise<Uint
   }
 
   try {
-    const stream = new Blob([data as BlobPart])
-      .stream()
-      .pipeThrough(new DecompressionStream('deflate-raw') as ReadableWritablePair<Uint8Array, Uint8Array>);
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-  } catch {
+    const output = await runtime.transform(data, 'deflate-raw', false, entry.uncompressed);
+    if (output.length !== entry.uncompressed) throw new OperationError('ZIP entry size mismatch.');
+    return output;
+  } catch (error) {
+    if (error instanceof OperationError) throw error;
     throw new OperationError('The entry is not valid deflate data. It may be encrypted.');
   }
 }
@@ -349,7 +356,7 @@ export const fileOperations: Operation[] = [
           'SVG is not rendered. It is markup that can carry script, and this is a tool for untrusted input.',
         );
       }
-      return `data:${info.mime};base64,${btoa(bytesToLatin1(bytes))}`;
+      return `data:${info.mime};base64,${runtime.toBase64(bytesToLatin1(bytes))}`;
     },
   },
   {
@@ -592,7 +599,7 @@ export const fileOperations: Operation[] = [
         stated === 'auto' || stated.length === 0
           ? (readImage(bytes)?.mime ?? 'application/octet-stream')
           : stated;
-      return `data:${mime};base64,${btoa(bytesToLatin1(bytes))}`;
+      return `data:${mime};base64,${runtime.toBase64(bytesToLatin1(bytes))}`;
     },
   },
   {
@@ -609,7 +616,7 @@ export const fileOperations: Operation[] = [
       const payload = match[4] ?? '';
       if (match[3]) {
         try {
-          const binary = atob(payload.replace(/\s/g, ''));
+          const binary = runtime.fromBase64(payload.replace(/\s/g, ''));
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
           return bytesToLatin1(bytes);
@@ -645,11 +652,11 @@ export const fileOperations: Operation[] = [
     ],
     run: async (input, args) => {
       const bytes = asBytes(input);
-      if (!globalThis.crypto?.subtle) {
+      if (!runtime.subtle) {
         throw new OperationError('Hashing needs a secure context (HTTPS or localhost).');
       }
       const digest = async (algorithm: string) =>
-        Array.from(new Uint8Array(await crypto.subtle.digest(algorithm, bytes as BufferSource)))
+        Array.from(new Uint8Array(await runtime.subtle!.digest(algorithm, bytes as BufferSource)))
           .map((b) => b.toString(16).padStart(2, '0'))
           .join('');
 
