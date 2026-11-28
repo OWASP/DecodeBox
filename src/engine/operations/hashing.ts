@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, toBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -123,11 +124,11 @@ function hex(value: number, digits: number): string {
 }
 
 
-function requireSubtle(): SubtleCrypto {
-  if (!globalThis.crypto?.subtle) {
+function requireSubtle(): NonNullable<typeof runtime.subtle> {
+  if (!runtime.subtle) {
     throw new OperationError('This needs a secure context (HTTPS or localhost).');
   }
-  return crypto.subtle;
+  return runtime.subtle;
 }
 
 function toHex(buffer: ArrayBuffer): string {

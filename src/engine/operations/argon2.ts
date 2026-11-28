@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, toBytes } from '../core/bytes';
 import { arg, toggle, type Operation } from './types';
@@ -139,6 +140,10 @@ export function argon2(options: Argon2Options): Uint8Array {
   const secret = options.secret ?? new Uint8Array(0);
   const associated = options.associated ?? new Uint8Array(0);
 
+  if (![options.memoryKiB, passes, parallelism, tagLength].every(Number.isSafeInteger) ||
+      options.memoryKiB < 8 || options.memoryKiB > 262144 || passes > 20 || parallelism > 16 || tagLength > 512) {
+    throw new OperationError('Argon2 parameters exceed the supported resource limits.');
+  }
   if (parallelism < 1) throw new OperationError('Argon2 needs at least one lane.');
   if (passes < 1) throw new OperationError('Argon2 needs at least one pass.');
   if (tagLength < 4) throw new OperationError('An Argon2 tag is at least four bytes.');
@@ -280,12 +285,12 @@ function hex(bytes: Uint8Array): string {
 function base64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/=+$/, '');
+  return runtime.toBase64(binary).replace(/=+$/, '');
 }
 
 function fromBase64(text: string): Uint8Array {
   const padded = text.replace(/-/g, '+').replace(/_/g, '/');
-  const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
+  const binary = runtime.fromBase64(padded + '='.repeat((4 - (padded.length % 4)) % 4));
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 

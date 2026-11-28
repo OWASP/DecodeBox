@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { md5 } from './hashing';
@@ -125,7 +126,7 @@ const JA4_VERSIONS: Record<number, string> = {
 };
 
 async function truncatedSha256(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  const digest = await runtime.subtle!.digest('SHA-256', runtime.encode(text));
   const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
   return hex.slice(0, JA4_TRUNCATION);
 }
@@ -242,7 +243,7 @@ function decodeProtobuf(bytes: Uint8Array, depth = 0): ProtoField[] {
           const nested = decodeProtobuf(body, depth + 1);
           value = nested.length > 0 ? nested : `0x${bytesToHex(body)}`;
         } catch {
-          const text = new TextDecoder('utf-8', { fatal: true });
+          const text = runtime.decoder('utf-8', { fatal: true });
           try {
             value = text.decode(body);
           } catch {
@@ -368,7 +369,7 @@ export const tlsOperations: Operation[] = [
 
       const ciphers = joinNonGrease(hello.ciphers, 2);
       const text = [String(hello.version), ciphers, types.join('-'), curves, pointFormats].join(',');
-      const hash = md5(new TextEncoder().encode(text));
+      const hash = md5(runtime.encode(text));
 
       return fingerprintOutput(
         String(arg(args, 'Output format', 'Hash digest')),
@@ -421,7 +422,7 @@ export const tlsOperations: Operation[] = [
       }
 
       const text = [String(version), String(cipher), types.join('-')].join(',');
-      const hash = md5(new TextEncoder().encode(text));
+      const hash = md5(runtime.encode(text));
       return fingerprintOutput(
         String(arg(args, 'Output format', 'Hash digest')),
         hash,
@@ -623,7 +624,7 @@ export const tlsOperations: Operation[] = [
           const text = String(entry.value);
           const body = /^0x[0-9a-f]*$/i.test(text)
             ? new Uint8Array((text.slice(2).match(/../g) ?? []).map((p) => parseInt(p, 16)))
-            : new TextEncoder().encode(text);
+            : runtime.encode(text);
           writeVarint(BigInt(body.length));
           out.push(...body);
         } else {
@@ -661,7 +662,7 @@ function hassh(input: string, args: Parameters<Operation['run']>[1], client: boo
     ? [kex, encryptionC2S, macC2S, compressionC2S]
     : [kex, encryptionS2C, macS2C, compressionS2C];
   const text = parts.join(';');
-  const hash = md5(new TextEncoder().encode(text));
+  const hash = md5(runtime.encode(text));
 
   return fingerprintOutput(
     String(arg(args, 'Output format', 'Hash digest')),

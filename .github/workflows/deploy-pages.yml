@@ -16,9 +16,7 @@ name: Deploy to GitHub Pages
 # nothing at all — the site was blank for an afternoon while every check passed.
 #
 # The branch is force-pushed as a single orphan commit each time. The output is
-# 2.7 MB and every file in it is content-hashed, so keeping its history would
-# add that much to the repository on every deploy, and not one byte of it would
-# ever be read again.
+# generated from source. Each tree carries its immutable SDK release directories forward.
 
 on:
   push:
@@ -44,6 +42,7 @@ jobs:
       # The only privilege in this workflow, and it exists for one command: the
       # push to gh-pages at the end.
       contents: write
+      pages: read
 
     steps:
       - name: Checkout
@@ -56,7 +55,7 @@ jobs:
       - name: Use Node LTS
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install clean packages
@@ -65,44 +64,47 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The build ships no CNAME, so no repository claims a domain it does not
-      # control. Relative asset paths support both the configured custom domain
-      # and a github.io project URL when no custom domain is configured.
-      #
-      # On a branch-served site the CNAME file *is* the custom domain setting,
-      # and this branch is force-pushed. A repository that has a domain
-      # configured would lose it the moment it deploys: Pages reads the setting
-      # back from a file that is no longer there and quietly unsets it. That is
-      # how a staging site once turned into a 404 in the middle of a release,
-      # with every check in this workflow green.
-      #
-      # So whatever domain the repository has configured is carried forward.
-      # Pages is asked what it currently is, with the branch's own file as a
-      # second opinion in case that read is not permitted.
-      - name: Keep this repository's own custom domain
+      - name: Check new SDK artifacts and retain published versions
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          rm -f dist/CNAME
-
-          raw="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/gh-pages/CNAME"
-
-          domain=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.cname // empty' 2>/dev/null || true)
-          if [ -z "$domain" ]; then
-            domain=$(curl -fsSL --max-time 30 "$raw" 2>/dev/null | tr -d '[:space:]' || true)
+          npm run check:sdk-dist
+          settings=$(gh api "repos/$GITHUB_REPOSITORY/pages")
+          jq -e '.source.branch == "gh-pages" and .source.path == "/"' <<< "$settings" >/dev/null
+          domain=$(jq -r '.cname // empty' <<< "$settings")
+          previous_ref=$(git ls-remote --heads origin refs/heads/gh-pages)
+          if [[ -n "$previous_ref" ]]; then
+            git fetch --no-tags --depth=1 origin refs/heads/gh-pages
+            if [[ -z "$domain" ]] && git cat-file -e FETCH_HEAD:CNAME 2>/dev/null; then
+              domain=$(git show FETCH_HEAD:CNAME)
+            fi
+            if git cat-file -e FETCH_HEAD:sdk 2>/dev/null; then
+              previous=$(mktemp -d)
+              git archive FETCH_HEAD sdk | tar -x -C "$previous"
+              for series in "$previous"/sdk/v*; do
+                [[ -d "$series" ]] || continue
+                name=$(basename "$series")
+                [[ "$name" =~ ^v[0-9]+$ ]] || continue
+                for release in "$series"/*/; do
+                  target="dist/sdk/$name/$(basename "$release")"
+                  if [[ -d "$release" && -d "$target" ]]; then
+                    diff -qr "$release" "$target"
+                  fi
+                done
+                mkdir -p "dist/sdk/$name"
+                cp -an "$series/." "dist/sdk/$name/"
+              done
+            fi
           fi
-
-          if [ -n "$domain" ]; then
-            echo "$domain" > dist/CNAME
-            echo "Keeping the custom domain $domain."
-          else
-            echo "No custom domain is configured, so the site stays on github.io."
+          rm -f dist/CNAME
+          if [[ -n "$domain" ]]; then
+            printf '%s\n' "$domain" > dist/CNAME
           fi
 
       - name: Verify the build is static and complete
         run: |
-          test -f dist/index.html || { echo "::error::dist/index.html is missing"; exit 1; }
-          test -f dist/decodebox.html || { echo "::error::dist/decodebox.html is missing - the download button would 404"; exit 1; }
+          test -s dist/index.html || { echo "::error::dist/index.html is missing"; exit 1; }
+          test -s dist/decodebox.html || { echo "::error::dist/decodebox.html is missing - the download button would 404"; exit 1; }
           # The application must never call out to a third party at runtime. This is a
           # coarse check, but it catches an accidental CDN reference before it ships.
           if grep -rIloE 'https?://(cdn|unpkg|jsdelivr)' dist --include='*.js' --include='*.html' | head -1 | grep -q .; then
@@ -176,9 +178,11 @@ jobs:
             case "$body" in
               *"$entry"*)
                 echo "$url is serving this build."
+                npm run check:sdk-dist -- dist "$url"
+                node scripts/check-sdk-browser.mjs "${url%/}/"
                 exit 0
                 ;;
-              *src/main.tsx*)
+              *src/app/main.tsx*)
                 # This one never resolves itself: it means Pages is pointed at
                 # the source branch, so there is no reason to keep waiting.
                 echo "::error::$url is serving this repository's source index.html instead of the build, so the page is blank. Set Settings -> Pages -> Build and deployment -> Source to 'Deploy from a branch', branch 'gh-pages' / (root)."

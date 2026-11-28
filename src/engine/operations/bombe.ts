@@ -1,6 +1,6 @@
 import { OperationError } from '../types';
 import { arg, type Operation } from './types';
-import { ROTORS, REFLECTORS, makeRotor, through, type Rotor } from './enigma';
+import { ROTORS, REFLECTORS, makeRotor, through } from './enigma';
 
 
 const A = 'A'.charCodeAt(0);
@@ -24,23 +24,37 @@ function buildTables(names: string[], rings: string, reflectorName: string): Tab
 
   const perm = new Uint8Array(POSITIONS * 26);
   const next = new Uint16Array(POSITIONS);
-  const rotors: Rotor[] = names.map((name, i) => makeRotor(name, rings[i]!, 'A'));
+  // A rotor's wiring depends only on its own position and ring. Compute
+  // each permutation once, including the reflector path through the left rotor.
+  const wiringAt = names.map((name, i) => {
+    const rotor = makeRotor(name, rings[i]!, 'A');
+    const forward = new Uint8Array(26 * 26);
+    const reverse = new Uint8Array(26 * 26);
+    for (let position = 0; position < 26; position++) {
+      rotor.position = position;
+      for (let letter = 0; letter < 26; letter++) {
+        const out = through(rotor, letter, false);
+        forward[position * 26 + letter] = i === 0 ? through(rotor, reflector[out]!, true) : out;
+        reverse[position * 26 + letter] = through(rotor, letter, true);
+      }
+    }
+    return {forward, reverse};
+  });
+  const leftPath = wiringAt[0]!.forward;
+  const middleRotor = wiringAt[1]!;
+  const rightRotor = wiringAt[2]!;
 
   for (let index = 0; index < POSITIONS; index++) {
     const left = Math.floor(index / 676);
     const middle = Math.floor(index / 26) % 26;
     const right = index % 26;
-    rotors[0]!.position = left;
-    rotors[1]!.position = middle;
-    rotors[2]!.position = right;
-
     const base = index * 26;
     for (let c = 0; c < 26; c++) {
-      let signal = c;
-      for (let i = 2; i >= 0; i--) signal = through(rotors[i]!, signal, false);
-      signal = reflector[signal]!;
-      for (let i = 0; i < 3; i++) signal = through(rotors[i]!, signal, true);
-      perm[base + c] = signal;
+      const first = rightRotor.forward[right * 26 + c]!;
+      const second = middleRotor.forward[middle * 26 + first]!;
+      const reflected = leftPath[left * 26 + second]!;
+      const returning = middleRotor.reverse[middle * 26 + reflected]!;
+      perm[base + c] = rightRotor.reverse[right * 26 + returning]!;
     }
 
     const rightOnNotch = notches[2]!.includes(right);
@@ -55,7 +69,7 @@ function buildTables(names: string[], rings: string, reflectorName: string): Tab
 }
 
 interface Menu {
-  edges: Array<{ from: number; to: number; at: number }>;
+  connections: Array<Array<{ target: number; at: number }>>;
   test: number;
   span: number;
 }
@@ -71,8 +85,7 @@ function buildMenu(crib: string, cipher: string, offset: number): Menu {
     );
   }
 
-  const edges: Menu['edges'] = [];
-  const degree = new Array<number>(26).fill(0);
+  const connections: Menu['connections'] = Array.from({ length: 26 }, () => []);
 
   for (let i = 0; i < plain.length; i++) {
     const from = plain.charCodeAt(i) - A;
@@ -83,15 +96,14 @@ function buildMenu(crib: string, cipher: string, offset: number): Menu {
           `'${plain[i]}' to itself, which Enigma never does.`,
       );
     }
-    edges.push({ from, to, at: offset + i });
-    degree[from]!++;
-    degree[to]!++;
+    connections[from]!.push({ target: to, at: offset + i });
+    connections[to]!.push({ target: from, at: offset + i });
   }
 
   let test = 0;
-  for (let c = 1; c < 26; c++) if (degree[c]! > degree[test]!) test = c;
+  for (let c = 1; c < 26; c++) if (connections[c]!.length > connections[test]!.length) test = c;
 
-  return { edges, test, span: offset + plain.length };
+  return { connections, test, span: offset + plain.length };
 }
 
 function letters(index: number): string {
@@ -123,28 +135,30 @@ function search(tables: Tables, menu: Menu, limit: number): Stop[] {
 
     live.fill(0);
     let top = 0;
-    stack[top++] = menu.test * 26 + menu.test;
+    const first = menu.test * 26 + menu.test;
+    stack[top++] = first;
+    live[first] = 1;
     let testWires = 0;
 
     while (top > 0) {
       const wire = stack[--top]!;
-      if (live[wire]) continue;
-      live[wire] = 1;
 
       const node = Math.floor(wire / 26);
       const value = wire % 26;
       if (node === menu.test && ++testWires === 26) break;
 
-      if (!live[value * 26 + node]) stack[top++] = value * 26 + node;
-
-      for (const edge of menu.edges) {
-        if (edge.from === node) {
-          const out = tables.perm[scramblers[edge.at]! + value]!;
-          if (!live[edge.to * 26 + out]) stack[top++] = edge.to * 26 + out;
-        }
-        if (edge.to === node) {
-          const out = tables.perm[scramblers[edge.at]! + value]!;
-          if (!live[edge.from * 26 + out]) stack[top++] = edge.from * 26 + out;
+      // Mark on enqueue so each wire occupies at most one of the 676 stack slots.
+      const diagonal = value * 26 + node;
+      if (!live[diagonal]) {
+        live[diagonal] = 1;
+        stack[top++] = diagonal;
+      }
+      for (const edge of menu.connections[node]!) {
+        const signal = tables.perm[scramblers[edge.at]! + value]!;
+        const destination = edge.target * 26 + signal;
+        if (!live[destination]) {
+          live[destination] = 1;
+          stack[top++] = destination;
         }
       }
     }

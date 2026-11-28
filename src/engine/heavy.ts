@@ -1,5 +1,5 @@
 
-export { publicDefinitions, getOperation } from './operations';
+export { publicDefinitions, publicDefinition, getOperation } from './operations';
 export { bake } from './core/bake';
 export { detect } from './detection/detect';
 export { autoDecode } from './detection/autoDecode';

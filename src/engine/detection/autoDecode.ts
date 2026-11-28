@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import type { Candidate, Layer, RecipeStep, Terminus, TerminusReason } from '../types';
 import { getOperation } from '../operations';
 import { byteLength } from '../core/bytes';
@@ -138,7 +139,7 @@ export async function autoDecode(
 ): Promise<Layer> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const limit = Math.max(1, Math.min(opts.maxDepth, MAX_AUTO_DEPTH));
-  const deadline = performance.now() + opts.budgetMs;
+  const deadline = runtime.now() + opts.budgetMs;
 
   const root: Layer = {
     id: 'input',
@@ -171,7 +172,7 @@ export async function autoDecode(
       node.terminus = ending('plain');
       return root;
     }
-    if (performance.now() > deadline) {
+    if (runtime.now() > deadline) {
       node.terminus = ending('budget');
       return root;
     }

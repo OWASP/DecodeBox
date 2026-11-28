@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import type { Analysis, AnalyseOptions } from './types';
 import { DEFAULT_ANALYSE_OPTIONS, SEVERITY_ORDER } from './types';
 import { explore, type Spine } from './explore';
@@ -10,7 +11,7 @@ export async function analyse(
   options: Partial<AnalyseOptions> = {},
   spine: Spine = null,
 ): Promise<Analysis> {
-  const started = performance.now();
+  const started = runtime.now();
   const settings = { ...DEFAULT_ANALYSE_OPTIONS, ...options };
 
   const { root, nodes, truncated } = await explore(input, settings, spine);
@@ -32,7 +33,7 @@ export async function analyse(
     maxDepth: Math.max(...all.map((node) => node.depth)),
     indicators,
     findings,
-    durationMs: performance.now() - started,
+    durationMs: runtime.now() - started,
     truncated,
   };
 }

@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, toBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -43,8 +44,8 @@ function secretBytes(input: string, encoding: string): Uint8Array {
   return asBytes(input);
 }
 
-function requireSubtle(): SubtleCrypto {
-  const subtle = globalThis.crypto?.subtle;
+function requireSubtle(): NonNullable<typeof runtime.subtle> {
+  const subtle = runtime.subtle;
   if (!subtle) {
     throw new OperationError('One-time passwords need Web Crypto, which this browser has not exposed.');
   }

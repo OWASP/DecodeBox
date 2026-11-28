@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { latin1ToBytes } from '../core/bytes';
 import { DELIMITER_OPTIONS, delimiterFor } from '../core/delimiters';
@@ -7,7 +8,7 @@ function decodeJwtSegment(segment: string): string {
   const padded = segment.replace(/-/g, '+').replace(/_/g, '/');
   const full = padded + '='.repeat((4 - (padded.length % 4)) % 4);
   try {
-    return new TextDecoder().decode(latin1ToBytes(atob(full)));
+    return runtime.decoder().decode(latin1ToBytes(runtime.fromBase64(full)));
   } catch {
     throw new OperationError('JWT segment is not valid Base64url.');
   }

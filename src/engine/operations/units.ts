@@ -139,7 +139,7 @@ const MASS: Record<string, number> = {
 
 const SPEED: Record<string, number> = {
   'Metres per second (m/s)': 1,
-  'Kilometres per hour (km/h)': 0.2778,
+  'Kilometres per hour (km/h)': 1000 / 3600,
   'Miles per hour (mph)': 0.44704,
   'Knots (kn)': 0.5144,
   'Human hair growth rate': 4.8e-9,

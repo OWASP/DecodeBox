@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import type { Layer, RecipeStep } from '../types';
 import { getOperation } from '../operations';
 import { previewText } from '../core/bytes';
@@ -333,7 +334,7 @@ export async function ctfHints(
   input: string,
   options: Partial<CtfOptions> = {},
 ): Promise<CtfReport> {
-  const started = performance.now();
+  const started = runtime.now();
   const opts = { ...DEFAULT_CTF_OPTIONS, ...options };
   const deadline = started + opts.budgetMs;
 
@@ -361,7 +362,7 @@ export async function ctfHints(
   for (const site of sites) {
     flags.push(...findFlags(site.text, site.depth, site.path, opts.format));
 
-    if (performance.now() > deadline) {
+    if (runtime.now() > deadline) {
       truncated = true;
       break;
     }
@@ -411,6 +412,6 @@ export async function ctfHints(
     hints: ranked.slice(0, MAX_HINTS),
     layers: sites.length,
     truncated: truncated || ranked.length > MAX_HINTS,
-    durationMs: performance.now() - started,
+    durationMs: runtime.now() - started,
   };
 }

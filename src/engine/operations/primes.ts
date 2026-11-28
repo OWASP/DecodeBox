@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { arg, type Operation } from './types';
 
@@ -63,7 +64,7 @@ function randomBelow(limit: bigint): bigint {
   const buffer = new Uint8Array(bytes);
 
   for (;;) {
-    globalThis.crypto.getRandomValues(buffer);
+    runtime.random(buffer);
     let value = 0n;
     for (const byte of buffer) value = (value << 8n) | BigInt(byte);
     value >>= BigInt(bytes * 8 - bits);
@@ -74,7 +75,7 @@ function randomBelow(limit: bigint): bigint {
 function randomOfBits(bits: number): bigint {
   const bytes = Math.ceil(bits / 8);
   const buffer = new Uint8Array(bytes);
-  globalThis.crypto.getRandomValues(buffer);
+  runtime.random(buffer);
 
   let value = 0n;
   for (const byte of buffer) value = (value << 8n) | BigInt(byte);

@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { previewText } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -41,7 +42,7 @@ export const magicOperations: Operation[] = [
       const crib = String(arg(args, 'Crib', ''));
       const withPreviews = Boolean(arg(args, 'Show previews', true));
 
-      const deadline = performance.now() + BUDGET_MS;
+      const deadline = runtime.now() + BUDGET_MS;
       const seen = new Set<string>([input]);
       const found: Chain[] = [];
       let nodes = 0;
@@ -52,7 +53,7 @@ export const magicOperations: Operation[] = [
         const next: Array<{ value: string; labels: string[] }> = [];
 
         for (const node of frontier) {
-          if (performance.now() > deadline || nodes >= MAX_NODES) break;
+          if (runtime.now() > deadline || nodes >= MAX_NODES) break;
 
           for (const candidate of await detect(node.value)) {
             if (candidate.confidence < threshold) break; 

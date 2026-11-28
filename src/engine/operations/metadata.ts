@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -64,11 +65,11 @@ function decodeText(bytes: Uint8Array): string {
   const body = bytes.subarray(1);
 
   let text: string;
-  if (encoding === 0) text = new TextDecoder('windows-1252').decode(body);
-  else if (encoding === 1) text = new TextDecoder('utf-16').decode(body);
-  else if (encoding === 2) text = new TextDecoder('utf-16be').decode(body);
-  else if (encoding === 3) text = new TextDecoder().decode(body);
-  else text = new TextDecoder('windows-1252').decode(bytes);
+  if (encoding === 0) text = runtime.decoder('windows-1252').decode(body);
+  else if (encoding === 1) text = runtime.decoder('utf-16').decode(body);
+  else if (encoding === 2) text = runtime.decoder('utf-16be').decode(body);
+  else if (encoding === 3) text = runtime.decoder().decode(body);
+  else text = runtime.decoder('windows-1252').decode(bytes);
 
   return stripNulls(text).split(NUL).join(' / ').trim();
 }
@@ -91,7 +92,7 @@ function readId3v2(bytes: Uint8Array): string[] {
   const end = Math.min(bytes.length, 10 + size);
 
   while (at + idLength + (version === 2 ? 3 : 6) <= end) {
-    const id = new TextDecoder('ascii').decode(bytes.subarray(at, at + idLength));
+    const id = runtime.decoder('ascii').decode(bytes.subarray(at, at + idLength));
     if (!/^[A-Z0-9]+$/.test(id)) break; 
 
     let length: number;
@@ -128,7 +129,7 @@ function readId3v2(bytes: Uint8Array): string[] {
 function readId3v1(bytes: Uint8Array): string[] {
   const at = bytes.length - 128;
   const field = (from: number, length: number): string => {
-    const raw = new TextDecoder('windows-1252').decode(
+    const raw = runtime.decoder('windows-1252').decode(
       bytes.subarray(at + from, at + from + length),
     );
     return untilNul(raw).trim();
@@ -156,7 +157,7 @@ function readVorbisComments(bytes: Uint8Array, at: number): string[] {
 
   const vendorLength = view.getUint32(at, true);
   at += 4;
-  const vendor = new TextDecoder().decode(bytes.subarray(at, at + vendorLength));
+  const vendor = runtime.decoder().decode(bytes.subarray(at, at + vendorLength));
   at += vendorLength;
   if (vendor.length > 0) lines.push(`${'Vendor'.padEnd(18)} ${vendor}`);
 
@@ -165,7 +166,7 @@ function readVorbisComments(bytes: Uint8Array, at: number): string[] {
   for (let i = 0; i < count && at + 4 <= bytes.length; i++) {
     const length = view.getUint32(at, true);
     at += 4;
-    const entry = new TextDecoder().decode(bytes.subarray(at, at + length));
+    const entry = runtime.decoder().decode(bytes.subarray(at, at + length));
     at += length;
     const split = entry.indexOf('=');
     if (split === -1) continue;
@@ -212,12 +213,12 @@ function readFlac(bytes: Uint8Array): string[] {
 
 function readRiff(bytes: Uint8Array): string[] {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const kind = new TextDecoder('ascii').decode(bytes.subarray(8, 12));
+  const kind = runtime.decoder('ascii').decode(bytes.subarray(8, 12));
   const lines = [`RIFF ${kind}`];
 
   let at = 12;
   while (at + 8 <= bytes.length) {
-    const id = new TextDecoder('ascii').decode(bytes.subarray(at, at + 4));
+    const id = runtime.decoder('ascii').decode(bytes.subarray(at, at + 4));
     const length = view.getUint32(at + 4, true);
     const body = at + 8;
 
@@ -226,14 +227,14 @@ function readRiff(bytes: Uint8Array): string[] {
       lines.push(`${'Sample rate'.padEnd(18)} ${view.getUint32(body + 4, true)} Hz`);
       lines.push(`${'Bit depth'.padEnd(18)} ${view.getUint16(body + 14, true)}`);
     } else if (id === 'LIST') {
-      const listType = new TextDecoder('ascii').decode(bytes.subarray(body, body + 4));
+      const listType = runtime.decoder('ascii').decode(bytes.subarray(body, body + 4));
       if (listType === 'INFO') {
         let inner = body + 4;
         while (inner + 8 <= body + length) {
-          const tag = new TextDecoder('ascii').decode(bytes.subarray(inner, inner + 4));
+          const tag = runtime.decoder('ascii').decode(bytes.subarray(inner, inner + 4));
           const size = view.getUint32(inner + 4, true);
           const value = stripNulls(
-            new TextDecoder('windows-1252').decode(bytes.subarray(inner + 8, inner + 8 + size)),
+            runtime.decoder('windows-1252').decode(bytes.subarray(inner + 8, inner + 8 + size)),
           );
           lines.push(`${tag.padEnd(18)} ${value}`);
           inner += 8 + size + (size % 2);

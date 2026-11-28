@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { DELIMITER_OPTIONS, delimiterFor, splitOnAnyDelimiter } from '../core/delimiters';
@@ -598,7 +599,7 @@ export const encodingOperations: Operation[] = [
     args: [],
     run: (input) => {
       try {
-        return new URL(`http://${input.trim()}`).hostname;
+        return runtime.parseUrl(`http://${input.trim()}`).hostname;
       } catch {
         throw new OperationError('Input is not a domain name.');
       }

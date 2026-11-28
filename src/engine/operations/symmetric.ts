@@ -1,13 +1,14 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1, toBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
 
 
-function requireSubtle(): SubtleCrypto {
-  if (!globalThis.crypto?.subtle) {
+function requireSubtle(): NonNullable<typeof runtime.subtle> {
+  if (!runtime.subtle) {
     throw new OperationError('AES needs a secure context (HTTPS or localhost).');
   }
-  return crypto.subtle;
+  return runtime.subtle;
 }
 
 function parseBytes(value: string, format: string, label: string): Uint8Array {
@@ -25,7 +26,7 @@ function parseBytes(value: string, format: string, label: string): Uint8Array {
 
   if (format === 'Base64') {
     try {
-      const binary = atob(value.replace(/\s/g, ''));
+      const binary = runtime.fromBase64(value.replace(/\s/g, ''));
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       return bytes;
@@ -158,7 +159,7 @@ export const symmetricOperations: Operation[] = [
     args: [{ name: 'Bits', type: 'option', value: '256', options: ['128', '192', '256'] }],
     run: (_input, args) => {
       const bytes = new Uint8Array(Number(arg(args, 'Bits', '256')) / 8);
-      crypto.getRandomValues(bytes);
+      runtime.random(bytes);
       return Array.from(bytes)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
@@ -173,7 +174,7 @@ export const symmetricOperations: Operation[] = [
     args: [{ name: 'Bytes', type: 'number', value: 12, min: 8, max: 32 }],
     run: (_input, args) => {
       const bytes = new Uint8Array(Number(arg(args, 'Bytes', 12)));
-      crypto.getRandomValues(bytes);
+      runtime.random(bytes);
       return Array.from(bytes)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
@@ -191,9 +192,9 @@ export const symmetricOperations: Operation[] = [
     ],
     run: (_input, args) => {
       const bytes = new Uint8Array(Number(arg(args, 'Bytes', 32)));
-      crypto.getRandomValues(bytes);
+      runtime.random(bytes);
       const format = String(arg(args, 'Output', 'Hex'));
-      if (format === 'Base64') return btoa(bytesToLatin1(bytes));
+      if (format === 'Base64') return runtime.toBase64(bytesToLatin1(bytes));
       if (format === 'Raw') return bytesToLatin1(bytes);
       return Array.from(bytes)
         .map((b) => b.toString(16).padStart(2, '0'))
@@ -208,7 +209,7 @@ export const symmetricOperations: Operation[] = [
     aliases: ['uuid', 'guid', 'new uuid'],
     args: [{ name: 'Count', type: 'number', value: 1, min: 1, max: 500 }],
     run: (_input, args) =>
-      Array.from({ length: Number(arg(args, 'Count', 1)) }, () => crypto.randomUUID()).join('\n'),
+      Array.from({ length: Number(arg(args, 'Count', 1)) }, () => runtime.uuid()).join('\n'),
   },
   {
     id: 'generate-password',
@@ -229,7 +230,7 @@ export const symmetricOperations: Operation[] = [
 
       return Array.from({ length: Number(arg(args, 'Count', 1)) }, () => {
         const values = new Uint32Array(length);
-        crypto.getRandomValues(values);
+        runtime.random(values);
         return Array.from(values, (v) => alphabet[v % alphabet.length]!).join('');
       }).join('\n');
     },

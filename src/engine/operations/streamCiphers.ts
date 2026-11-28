@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError, type OperationArg } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { parseKey, KEY_FORMATS } from './keys';
@@ -491,7 +492,7 @@ export const streamCipherOperations: Operation[] = [
       const data = asBytes(input);
 
       const iv = new Uint8Array(10);
-      crypto.getRandomValues(iv);
+      runtime.random(iv);
       const schedule = new Uint8Array(key.length + 10);
       schedule.set(key);
       schedule.set(iv, key.length);

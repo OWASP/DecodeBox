@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1, latin1ToBytes } from '../core/bytes';
 import { arg, type Operation } from './types';
@@ -37,10 +38,10 @@ function rotateSelective(input: string, options: RotateOptions): string {
 }
 
 async function digest(algorithm: string, input: string): Promise<string> {
-  if (!globalThis.crypto?.subtle) {
+  if (!runtime.subtle) {
     throw new OperationError('Hashing needs a secure context (HTTPS or localhost).');
   }
-  const buffer = await crypto.subtle.digest(algorithm, asBytes(input) as BufferSource);
+  const buffer = await runtime.subtle!.digest(algorithm, asBytes(input) as BufferSource);
   return Array.from(new Uint8Array(buffer))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');

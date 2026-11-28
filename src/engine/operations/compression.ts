@@ -1,16 +1,7 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes, bytesToLatin1 } from '../core/bytes';
 import { arg, type Operation } from './types';
-
-async function transform(
-  bytes: Uint8Array,
-  stream: CompressionStream | DecompressionStream,
-): Promise<Uint8Array> {
-  const source = new Blob([bytes as BlobPart]).stream();
-  const piped = source.pipeThrough(stream as ReadableWritablePair<Uint8Array, Uint8Array>);
-  const buffer = await new Response(piped).arrayBuffer();
-  return new Uint8Array(buffer);
-}
 
 function asBinary(input: string): Uint8Array {
   return asBytes(input);
@@ -18,14 +9,15 @@ function asBinary(input: string): Uint8Array {
 
 async function decompress(input: string, format: 'gzip' | 'deflate' | 'deflate-raw') {
   try {
-    return bytesToLatin1(await transform(asBinary(input), new DecompressionStream(format)));
-  } catch {
+    return bytesToLatin1(await runtime.transform(asBinary(input), format, false));
+  } catch (error) {
+    if (error instanceof OperationError) throw error;
     throw new OperationError(`Input is not valid ${format} data.`);
   }
 }
 
 async function compress(input: string, format: 'gzip' | 'deflate' | 'deflate-raw') {
-  return bytesToLatin1(await transform(asBytes(input), new CompressionStream(format)));
+  return bytesToLatin1(await runtime.transform(asBytes(input), format, true));
 }
 
 function withGzipHeader(
@@ -97,7 +89,7 @@ export const compressionOperations: Operation[] = [
       { name: 'Timestamp', type: 'number', value: 0, min: 0 },
     ],
     run: async (input, args) => {
-      const raw = await transform(asBytes(input), new CompressionStream('gzip'));
+      const raw = await runtime.transform(asBytes(input), 'gzip', true);
       const when = String(arg(args, 'Modification time', 'None'));
       const mtime =
         when === 'Now'

@@ -1,5 +1,7 @@
 # OWASP DecodeBox
 
+<img src="public/favicon.svg" alt="DecodeBox logo" width="64" height="64">
+
 [![OWASP Project: Incubator](https://img.shields.io/badge/OWASP_Project-Incubator-blue.svg)](https://owasp.org/projects/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Live Site](https://img.shields.io/badge/demo-decodebox.owasp.org-orange.svg)](https://decodebox.owasp.org/)
@@ -21,23 +23,35 @@ evidence you can inspect, and the steps that reach a layer can become an editabl
 
 - **Detection.** Follow nested encodings, including encoded fields inside structured data.
   The analysis shows where it found each indicator and what triggered each security finding.
-- **Recipes.** Choose from 504 operations to convert formats, decompress data, compute hashes,
+- **Recipes.** Use the operation catalogue to convert formats, decompress data, compute hashes,
   or extract values. Adjust the arguments, reorder steps, and save the recipe for another input.
 - **Capture the flag (CTF).** Search decoded layers for flag patterns, review ranked hints for
   the next transformation, and copy the findings into a Markdown report.
 
-## Development
+## JavaScript SDK
 
-For local development, clone the [source repository](https://github.com/OWASP/DecodeBox)
-and run these commands from its root with Node.js **22.12.0 or later**.
+Embed operation discovery, recipes and multilayer analysis in a browser or Java-enabled GraalJS.
+The SDK uses the same local processing engine as the workbench. This example uses the existing
+SDK distribution. The official site's SDK paths will become available after deployment.
 
-```sh
-npm ci
-npm run dev
+```html
+<meta charset="utf-8">
+<script src="https://decodebox.m4sh.ir/api.js"></script>
+<script>
+  DecodeBox.ready.then(async () => {
+    console.log(await DecodeBox.executeOperation("from-base64", "SGVsbG8=")); // Hello
+  });
+</script>
 ```
 
-Run `npm test -- --run` to execute the 1,205 tests. Run `npm run build` to produce the static
-site and the standalone edition.
+See the [SDK guide](docs/sdk/README.md) for versioned downloads, module imports and integrity
+verification. See [runtime integrations](docs/sdk/integrations.md) for TypeScript and ZAP.
+
+## Development
+
+Use Node.js 24, run `npm ci`, then `npm run dev`. The [development guide](docs/development.md)
+covers regression tests and builds for the site, standalone application and SDK. See the
+[documentation index](docs/README.md) for the project layout and API reference.
 
 ## Standalone Edition
 
@@ -59,20 +73,6 @@ For decoding errors, include a small, non-sensitive sample, your recipe, and the
 Contributions to operations should include test vectors. Follow the
 [OWASP contributing guidelines](https://github.com/OWASP/.github/blob/master/CONTRIBUTING.md)
 and [Code of Conduct](https://policy.owasp.org/operational/code-of-conduct).
-
-<details>
-<summary>Source layout</summary>
-
-- The [engine interface] exposes decoding and analysis to the React [interface components].
-- The engine separates [operations], [format detection], and [recursive analysis].
-
-</details>
-
-[Interface components]: src/components/
-[engine interface]: src/engine/index.ts
-[operations]: src/engine/operations/
-[format detection]: src/engine/detection/
-[recursive analysis]: src/engine/analysis/
 
 ## Project Leader
 

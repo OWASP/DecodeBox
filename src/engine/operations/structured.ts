@@ -1,3 +1,4 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { removeAll } from '../core/strip';
 import { arg, type Operation } from './types';
@@ -335,7 +336,7 @@ export const structuredOperations: Operation[] = [
       const decode = (segment: string) => {
         const padded = segment.replace(/-/g, '+').replace(/_/g, '/');
         try {
-          return JSON.parse(atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))) as Record<
+          return JSON.parse(runtime.fromBase64(padded + '='.repeat((4 - (padded.length % 4)) % 4))) as Record<
             string,
             unknown
           >;

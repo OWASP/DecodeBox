@@ -1,20 +1,21 @@
+import { runtime } from '../runtime';
 import { OperationError } from '../types';
 import { asBytes } from '../core/bytes';
 import { PI_HEX_DIGITS } from '../core/piDigits';
 import { arg, type Operation } from './types';
 
 
-const utf8 = new TextEncoder();
+
 
 function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function subtle(): SubtleCrypto {
-  if (typeof crypto === 'undefined' || !crypto.subtle) {
+function subtle(): NonNullable<typeof runtime.subtle> {
+  if (!runtime.subtle) {
     throw new OperationError('This browser does not expose Web Crypto.');
   }
-  return crypto.subtle;
+  return runtime.subtle;
 }
 
 
@@ -131,7 +132,7 @@ function eksBlowfish(password: Uint8Array, salt: Uint8Array, cost: number) {
     expand(salt, null);
   }
 
-  const magic = utf8.encode('OrpheanBeholderScryDoubt');
+  const magic = runtime.encode('OrpheanBeholderScryDoubt');
   const words: number[] = [];
   for (let i = 0; i < 6; i++) {
     words.push(
@@ -184,7 +185,7 @@ function bcrypt(password: string, salt: Uint8Array, cost: number, version: strin
   }
   if (salt.length !== 16) throw new OperationError('A bcrypt salt is 16 bytes.');
 
-  const bytes = utf8.encode(password).subarray(0, 72);
+  const bytes = runtime.encode(password).subarray(0, 72);
   const keyed = new Uint8Array(bytes.length + 1);
   keyed.set(bytes);
 
@@ -255,7 +256,8 @@ async function scrypt(
 ): Promise<Uint8Array> {
   if (n < 2 || (n & (n - 1)) !== 0) throw new OperationError('N must be a power of two above 1.');
   if (r < 1 || p < 1) throw new OperationError('r and p must be at least 1.');
-  if (128 * r * n > MAX_SCRYPT_BYTES) {
+  if (![n, r, p, length].every(Number.isSafeInteger)) throw new OperationError('Scrypt parameters must be integers.');
+  if (128 * r * Math.max(n, p) > MAX_SCRYPT_BYTES) {
     throw new OperationError(`128 * r * N is ${128 * r * n} bytes; the limit here is ${MAX_SCRYPT_BYTES}.`);
   }
 
@@ -307,7 +309,7 @@ export const passwordHashOperations: Operation[] = [
       let salt: Uint8Array;
       if (saltText === '') {
         salt = new Uint8Array(16);
-        crypto.getRandomValues(salt);
+        runtime.random(salt);
       } else {
         salt = bcryptBase64Decode(saltText.slice(0, 22));
         if (salt.length !== 16) throw new OperationError('A bcrypt salt is 22 characters.');
@@ -371,7 +373,7 @@ export const passwordHashOperations: Operation[] = [
       const saltText = String(arg(args, 'Salt', ''));
       const salt =
         args.find((a) => a.name === 'Salt')?.toggleValue === 'UTF-8'
-          ? utf8.encode(saltText)
+          ? runtime.encode(saltText)
           : new Uint8Array((saltText.replace(/[^0-9a-fA-F]/g, '').match(/../g) ?? []).map((p) => parseInt(p, 16)));
 
       const out = await scrypt(
